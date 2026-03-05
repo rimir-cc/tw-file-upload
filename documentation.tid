@@ -1,0 +1,14 @@
+created: 20260305110602315
+modified: 20260305110602315
+title: $:/plugins/rimir/file-upload/documentation
+type: text/vnd.tiddlywiki
+
+<%if [[$:/plugins/rimir/doc-template]has[plugin-type]] %>
+<$tiddler tiddler="$:/plugins/rimir/file-upload/doc/overview">
+<$transclude $tiddler="$:/plugins/rimir/file-upload/doc/overview"/>
+</$tiddler>
+<%else%>
+To display this documentation, the plugin [[$:/plugins/rimir/doc-template]] needs to be installed.
+
+See the [[readme|$:/plugins/rimir/file-upload/readme]] tab for a basic overview.
+<%endif%>

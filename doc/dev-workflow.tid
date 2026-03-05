@@ -1,0 +1,186 @@
+created: 20260305110602314
+modified: 20260305110602314
+rdt.order: 3
+rdt.plugin-key: file-upload
+rdt.plugin-name: file upload
+rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.section: Dev Workflow
+title: $:/plugins/rimir/file-upload/doc/dev-workflow
+type: text/vnd.tiddlywiki
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/page">
+<$fill $name="body">
+
+!! Plugin files
+
+|!File |!Type |!Role |
+|`plugin.info` |metadata |Plugin metadata (v0.2.0) |
+|`routes/upload.js` |`route` |`POST /api/file-upload` &mdash; receive base64 file, write to `/files/`, run thumbnail processor |
+|`routes/rename.js` |`route` |`POST /api/file-rename` &mdash; rename file on disk (incl. `_generated/`) |
+|`routes/delete.js` |`route` |`POST /api/file-delete` &mdash; delete file from disk (incl. `_generated/`) |
+|`widgets/dropzone.js` |`widget` |`<$file-dropzone>` &mdash; extends core dropzone, uploads via XHR |
+|`startup.js` |`startup` |Browser-side: registers `th-saving-tiddler` and `th-deleting-tiddler` hooks |
+|`config-media-types.tid` |data |Default allowed MIME types (JSON array) |
+|`config-file-paths.tid` |config |Filter for computing file paths from tiddler fields |
+|`config-processors.tid` |data |''Deprecated'' &mdash; superseded by `thumb-*` config tiddlers |
+|`config-thumb-images.tid` |config |Enable image thumbnail generation (`yes`/`no`) |
+|`config-thumb-pdfs.tid` |config |Enable PDF thumbnail generation (`yes`/`no`) |
+|`config-thumb-resolution.tid` |config |Thumbnail max dimension (e.g. `200` or `300x200`) |
+|`config-thumb-rendering.tid` |config |Show thumbnails by default (`yes`/`no`) |
+|`config-global-dedup.tid` |config |Global content-hash deduplication (`yes`/`no`) |
+|`settings.tid` |UI |Control Panel &rarr; Settings &rarr; File Upload |
+|`cascade-thumbnail.tid` |cascade |ViewTemplateBodyFilter &mdash; routes to thumbnail body template |
+|`body-thumbnail.tid` |template |Body template: thumbnail with click-to-expand |
+|`toolbar-version-switch.tid` |toolbar |ViewToolbar button: toggle thumbnail/full-size |
+|`toolbar-version-switch-visibility.tid` |config |Makes toolbar button visible by default |
+|`icon-expand.tid` |icon |Expand SVG icon |
+|`icon-shrink.tid` |icon |Shrink SVG icon |
+|`styles-thumbnail.tid` |stylesheet |CSS for thumbnail wrapper, full-view embed sizing |
+|`readme.tid` |doc |Plugin readme |
+
+!! Restart rules
+
+|!Change |!Restart needed? |
+|Edit `config-media-types.tid` |No &mdash; read from `$tw.wiki` per request |
+|Edit `config-file-paths.tid` |No &mdash; read from `$tw.wiki` per request |
+|Edit `config-thumb-*.tid` |No &mdash; read from `$tw.wiki` per request |
+|Edit `config-global-dedup.tid` |No &mdash; read from `$tw.wiki` per request |
+|Edit `runner-actions.json` |No for upload.js (reads per request) &mdash; Yes for runner plugin |
+|Edit `.tid` files (settings, styles, templates) |No &mdash; plugin tiddlers reload on restart, but config changes via UI take effect immediately |
+|Edit any `.js` module |Yes &mdash; JS modules load at boot |
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/callout" type="tip">
+<$fill $name="body">
+On Windows, use `taskkill //F //PID <pid> //T` to kill the server before restarting.
+</$fill>
+</$transclude>
+
+!! API reference
+
+!!! POST /api/file-upload
+
+Request:
+```json
+{
+  "filename": "photo.jpg",
+  "type": "image/jpeg",
+  "content": "<base64>",
+  "targetPath": "images/photo.jpg"
+}
+```
+
+Response (200):
+```json
+{
+  "canonicalUri": "/files/images/photo.jpg",
+  "filename": "photo.jpg",
+  "generatedUri": "/files/images/_generated/photo_thumb.jpg"
+}
+```
+
+|!Status |!Meaning |
+|200 |File uploaded successfully |
+|400 |Missing fields or invalid JSON |
+|403 |Path traversal detected |
+|413 |Upload too large (>50MB JSON) |
+|415 |MIME type not in whitelist |
+
+!!! POST /api/file-rename
+
+Request:
+```json
+{"oldUri": "/files/images/old.jpg", "newUri": "/files/images/new.jpg"}
+```
+
+|!Status |!Meaning |
+|200 |File renamed, returns `{newCanonicalUri}` |
+|404 |Source file not found |
+|409 |Target file already exists |
+
+!!! POST /api/file-delete
+
+Request:
+```json
+{"uri": "/files/images/photo.jpg"}
+```
+
+|!Status |!Meaning |
+|200 |File deleted, returns `{deleted: true}` |
+|404 |File not found |
+
+!! Configuration
+
+!!! Media types
+
+Edit `$:/config/rimir/file-upload/media-types` (JSON array) to add or remove allowed MIME types. Changes take effect immediately (no restart needed).
+
+!!! File paths filter
+
+`$:/config/rimir/file-upload/file-paths` is a TW filter that computes the target path under `/files/`. The temp tiddler's fields are available as input: `filename` (original name) and `type` (MIME type).
+
+Default:
+
+```
+[get[upload-folder]addsuffix[/]addsuffix{!!filename}]
+[get[type]prefix[image/]then[images/]addsuffix{!!filename}]
+[get[type]match[application/pdf]then[pdf/]addsuffix{!!filename}]
+[get[filename]]
+```
+
+Filter steps (first match wins):
+
+# If `upload-folder` is set (via `prop-upload-folder` on the widget), use `<upload-folder>/<filename>`
+# If type starts with `image/` &rarr; `images/<filename>`
+# If type is `application/pdf` &rarr; `pdf/<filename>`
+# Fallback: just `<filename>` (root of `/files/`)
+
+The `subfolder` attribute on `<$file-dropzone>` overrides this filter entirely if set.
+
+!!! Thumbnails
+
+Controlled via Settings UI (Control Panel &rarr; Settings &rarr; File Upload) or config tiddlers:
+
+|!Tiddler |!Default |!Purpose |
+|`$:/config/rimir/file-upload/thumb-images` |`no` |Generate thumbnails for images |
+|`$:/config/rimir/file-upload/thumb-pdfs` |`no` |Generate PDF first-page thumbnails (requires Ghostscript) |
+|`$:/config/rimir/file-upload/thumb-resolution` |`200` |Max dimension: `200` (single) or `300x200` (WxH) |
+|`$:/config/rimir/file-upload/thumb-rendering` |`no` |Show thumbnails instead of full-size by default |
+
+Thumbnail generation uses ImageMagick via `runner-actions.json`:
+
+* `thumb-image`: `magick {{input}} -thumbnail "{{resolution}}>" {{output}}`
+* `thumb-pdf`: `magick {{input}}[0] -thumbnail "{{resolution}}>" {{output}}` (first page &rarr; PNG)
+
+Generated files go to `_generated/<basename>_thumb.<ext>` alongside the original.
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/callout" type="warning">
+<$fill $name="body">
+PDF thumbnails require both ImageMagick and Ghostscript on the server's `PATH`. ImageMagick delegates PDF rasterisation to Ghostscript automatically (`gs` on Linux, `gswin64c` on Windows).
+</$fill>
+</$transclude>
+
+!!! Deduplication
+
+`$:/config/rimir/file-upload/global-dedup` (`yes`/`no`) &mdash; when enabled, the widget computes a content hash before upload and skips if an identical file already exists.
+
+!! Widget reference
+
+!!! `<$file-dropzone>`
+
+|!Attribute |!Description |
+|`actions` |Action string executed on upload completion |
+|`subfolder` |Optional subfolder override (bypasses filter) |
+|`prop-*` |Extra fields passed through as action variables |
+
+Action variables available in `actions`:
+
+|!Variable |!Description |
+|`<<data>>` |Raw JSON response body |
+|`<<type>>` |MIME type of uploaded file |
+|`<<filename>>` |Original filename |
+|`<<content-hash>>` |Content hash (8-char hex) |
+|`<<canonical-uri>>` |Canonical URI of uploaded file (e.g. `/files/images/photo.jpg`) |
+|`<<generated-uri>>` |Thumbnail URI if processor ran (e.g. `/files/images/_generated/photo_thumb.jpg`), empty otherwise |
+
+</$fill>
+</$transclude>

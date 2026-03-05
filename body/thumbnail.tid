@@ -1,0 +1,16 @@
+created: 20260305110602313
+modified: 20260305110602313
+title: $:/plugins/rimir/file-upload/body/thumbnail
+type: text/vnd.tiddlywiki
+
+\define thumb-state() $:/state/file-upload/view-mode/$(currentTiddler)$
+
+<$reveal type="nomatch" state=<<thumb-state>> text="full" tag="div" class="fu-thumbnail-wrapper">
+<$button class="fu-thumbnail-click" actions="<$action-setfield $tiddler=<<thumb-state>> text='full'/>">
+<img class="fu-thumbnail-img" src={{!!_thumbnail_uri}} title="Click to show full size"/>
+</$button>
+</$reveal>
+
+<$reveal type="match" state=<<thumb-state>> text="full" tag="div" class="fu-full-view">
+<$transclude/>
+</$reveal>

@@ -1,0 +1,8 @@
+created: 20260305110602316
+modified: 20260305110602316
+title: $:/plugins/rimir/file-upload/notifications/skipped
+type: text/vnd.tiddlywiki
+
+Upload skipped (<<count>> file<<$text text={{{ [<count>compare:number:gt[1]then[s]] }}}>>): content already exists.
+
+<$text text=<<skipped-list>>/>

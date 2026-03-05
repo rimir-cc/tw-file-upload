@@ -1,0 +1,11 @@
+created: 20260305110602317
+modified: 20260305110602317
+tags: $:/tags/Stylesheet
+title: $:/plugins/rimir/file-upload/styles/thumbnail
+type: text/vnd.tiddlywiki
+
+.fu-thumbnail-wrapper { text-align: center; padding: 8px; }
+.fu-thumbnail-img { max-width: 100%; border-radius: 4px; cursor: pointer; }
+.fu-thumbnail-click { background: none; border: none; padding: 0; cursor: pointer; }
+.fu-full-view > embed,
+.fu-full-view > iframe { width: 100%; height: 600px; }

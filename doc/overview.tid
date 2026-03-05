@@ -1,0 +1,54 @@
+created: 20260305110602314
+modified: 20260305110602314
+rdt.hub-category: tools
+rdt.hub-category-name: Tools
+rdt.hub-order: 4
+rdt.order: 1
+rdt.plugin-key: file-upload
+rdt.plugin-name: file upload
+rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.section: Overview
+title: $:/plugins/rimir/file-upload/doc/overview
+type: text/vnd.tiddlywiki
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/page">
+<$fill $name="body">
+
+!! What it does
+
+Upload media files to the server's `/files/` directory and create tiddlers with `_canonical_uri`. When a tiddler is renamed or deleted, the physical file on disk follows automatically.
+
+!! Features
+
+* ''Upload'' &mdash; drop files onto `<$file-dropzone>`, uploads to `/files/`, creates tiddler with `_canonical_uri`
+* ''Thumbnails'' &mdash; automatic thumbnail generation for images and PDFs via ImageMagick (configurable resolution)
+* ''Thumbnail rendering'' &mdash; show thumbnails instead of full-size files by default, with click-to-expand and toolbar toggle
+* ''Rename'' &mdash; renaming a tiddler renames the file on disk (including `_generated/` thumbnails) and updates `_canonical_uri`
+* ''Delete'' &mdash; deleting a tiddler offers to delete the file from disk (including `_generated/` thumbnails)
+* ''Deduplication'' &mdash; optional global content-hash dedup skips uploads of identical files
+* ''Path filter'' &mdash; target path computed via configurable TW filter
+* ''MIME whitelist'' &mdash; only allowed file types can be uploaded
+* ''Settings UI'' &mdash; Control Panel &rarr; Settings &rarr; File Upload for all configuration
+
+!! Quick start
+
+Add a dropzone to any tiddler:
+
+```
+<$file-dropzone actions="""
+<$action-createtiddler
+  $basetitle=<<filename>>
+  _canonical_uri=<<canonical-uri>>
+  _thumbnail_uri=<<generated-uri>>
+  _content_hash=<<content-hash>>
+  type=<<type>>
+/>
+""">
+Drop files here
+</$file-dropzone>
+```
+
+Drop a file &rarr; the file-paths filter routes it to the right subfolder: images to `files/images/`, PDFs to `files/pdf/`. A tiddler is created with `_canonical_uri`. If thumbnails are enabled, `_thumbnail_uri` points to the generated thumbnail in `_generated/`.
+
+</$fill>
+</$transclude>

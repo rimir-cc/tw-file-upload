@@ -1,0 +1,84 @@
+created: 20260305110602313
+modified: 20260305110602313
+rdt.order: 2
+rdt.plugin-key: file-upload
+rdt.plugin-name: file upload
+rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.section: Architecture
+title: $:/plugins/rimir/file-upload/doc/architecture
+type: text/vnd.tiddlywiki
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/page">
+<$fill $name="body">
+
+!! Data flow
+
+!!! Upload
+
+# Browser: user drops file onto `<$file-dropzone>`
+# Widget reads file via `wiki.readFiles()`, base64-encodes content
+# Widget computes `targetPath` from file-paths filter (or `subfolder` attribute)
+# Widget performs XHR &rarr; `POST /api/file-upload`
+# Server validates MIME type, checks path traversal, writes file to `/files/<targetPath>`
+# Server checks thumbnail settings &mdash; if enabled for this MIME type, runs ImageMagick via `runner-actions.json` to generate thumbnail in `_generated/`
+# Server responds with `{canonicalUri, filename, generatedUri?}`
+# Widget parses response, extracts `canonical-uri` and `generated-uri` as variables
+# Widget executes `actions` callback &mdash; typically creates tiddler with `_canonical_uri` and `_thumbnail_uri`
+
+!!! Rename
+
+# Browser: user saves tiddler with a new title
+# `th-saving-tiddler` hook detects title change + `_canonical_uri` on original tiddler
+# Hook computes new file path from new title (preserving extension)
+# Synchronous XHR &rarr; `POST /api/file-rename`
+# Server renames file on disk, also renames `_generated/` files
+# Hook updates `_canonical_uri` on the new tiddler
+
+!!! Delete
+
+# Browser: user deletes a tiddler with `_canonical_uri`
+# `th-deleting-tiddler` hook shows confirmation dialog
+# If confirmed, async XHR &rarr; `POST /api/file-delete`
+# Server deletes file from disk, also deletes `_generated/` files
+# Server cleans up empty parent directories
+
+!! Components
+
+|!Component |!Layer |!Role |
+|`routes/upload.js` |Server |`POST /api/file-upload` &mdash; receive base64 file, validate, write to `/files/`, run thumbnail processor |
+|`routes/rename.js` |Server |`POST /api/file-rename` &mdash; rename file on disk (incl. `_generated/`) |
+|`routes/delete.js` |Server |`POST /api/file-delete` &mdash; delete file from disk (incl. `_generated/`) |
+|`widgets/dropzone.js` |Browser |`<$file-dropzone>` &mdash; extends core dropzone, uploads via XHR, passes response variables to actions |
+|`startup.js` |Browser |Registers `th-saving-tiddler` and `th-deleting-tiddler` hooks |
+|`cascade-thumbnail.tid` |Browser |ViewTemplateBodyFilter &mdash; routes tiddlers with `_thumbnail_uri` to thumbnail body template |
+|`body-thumbnail.tid` |Browser |Body template &mdash; shows thumbnail with click-to-expand, or full-size view |
+|`toolbar-version-switch.tid` |Browser |ViewToolbar button &mdash; toggles between thumbnail and full-size view |
+|`settings.tid` |Browser |Control Panel &rarr; Settings &rarr; File Upload |
+
+!! Design decisions
+
+* ''`th-saving-tiddler` not `th-renaming-tiddler`'' &mdash; the editor's save-with-new-title flow uses `addTiddler` + `deleteTiddler`, not `wiki.renameTiddler()`. The `th-saving-tiddler` hook is the only one that fires during editor renames.
+* ''Synchronous XHR for rename'' &mdash; `th-saving-tiddler` must return the (possibly modified) tiddler synchronously. Modern browsers still support sync XHR on the main thread.
+* ''`bodyFormat: "stream"` for upload'' &mdash; base64-encoded files can be large; streaming avoids TW's default body buffering limits.
+* ''`_generated/` subfolder'' &mdash; post-upload processors write derived files (thumbnails) alongside the original. Rename and delete operations also handle `_generated/` files.
+* ''Path traversal protection'' &mdash; all routes verify that resolved paths stay inside the `files/` directory using `path.relative()`.
+* ''Direct XHR in dropzone widget'' &mdash; uses `$tw.utils.httpRequest` instead of `tm-http-request` so the widget can parse the server response and pass `canonical-uri` and `generated-uri` as action variables automatically.
+* ''Settings-driven processors'' &mdash; thumbnail generation is controlled by config tiddlers (`thumb-images`, `thumb-pdfs`, `thumb-resolution`) read per request, not by the static `processors` tiddler.
+* ''ViewTemplateBodyFilter cascade'' &mdash; thumbnail rendering hooks into TW's body cascade so it runs before the default template. Only activates when the tiddler has `_thumbnail_uri` and thumb-rendering is enabled.
+* ''`$:/state/` for view toggle'' &mdash; thumbnail/full-size state uses `$:/state/file-upload/view-mode/<title>` (memory-only, not persisted).
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/callout" type="info">
+<$fill $name="body">
+The rename and delete routes operate on `/files/`, not `tiddlers/`. The filesystem-watcher plugin watches `tiddlers/` only, so there is no conflict or write-lock needed.
+</$fill>
+</$transclude>
+
+!! Security model
+
+* MIME type whitelist &mdash; only types listed in `$:/config/rimir/file-upload/media-types` are accepted (checked both client-side and server-side)
+* Path traversal &mdash; `path.relative(basePath, resolved)` must not start with `..`
+* CSRF &mdash; all POST routes require `X-Requested-With: TiddlyWiki` header
+* File conflict &mdash; rename returns 409 if the target file already exists
+
+</$fill>
+</$transclude>
