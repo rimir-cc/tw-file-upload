@@ -155,8 +155,8 @@ function runProcessor(mimeType, inputPath, canonicalUri, callback) {
 	// Substitute parameters
 	var resolution = getResolution();
 	var command = actionDef.command;
-	command = command.split("{{input}}").join(inputPath);
-	command = command.split("{{output}}").join(outputPath);
+	command = command.split("{{input}}").join('"' + inputPath + '"');
+	command = command.split("{{output}}").join('"' + outputPath + '"');
 	command = command.split("{{resolution}}").join(resolution);
 	// Execute
 	child_process.exec(command, function(err, stdout, stderr) {

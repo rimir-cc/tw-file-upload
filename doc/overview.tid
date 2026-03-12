@@ -50,5 +50,7 @@ Drop files here
 
 Drop a file &rarr; the file-paths filter routes it to the right subfolder: images to `files/images/`, PDFs to `files/pdf/`. A tiddler is created with `_canonical_uri`. If thumbnails are enabled, `_thumbnail_uri` points to the generated thumbnail in `_generated/`.
 
+Use the [[test tab|$:/plugins/rimir/file-upload/test]] in the plugin detail view to try it out.
+
 </$fill>
 </$transclude>

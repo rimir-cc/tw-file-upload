@@ -7,6 +7,12 @@ type: text/vnd.tiddlywiki
 <$tiddler tiddler="$:/plugins/rimir/file-upload/doc/overview">
 <$transclude $tiddler="$:/plugins/rimir/file-upload/doc/overview"/>
 </$tiddler>
+
+---
+
+!! Try it out
+
+<$transclude $tiddler="$:/plugins/rimir/file-upload/test"/>
 <%else%>
 To display this documentation, the plugin [[$:/plugins/rimir/doc-template]] needs to be installed.
 

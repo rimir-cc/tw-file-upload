@@ -2,10 +2,10 @@
     "title": "$:/plugins/rimir/file-upload",
     "description": "Upload files to /files/ with rename, delete, thumbnails, and deduplication",
     "author": "rimir",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "core-version": ">=5.3.0",
     "source": "https://github.com/rimir-cc/tw-file-upload",
     "plugin-type": "plugin",
-    "list": "readme documentation settings changelog license",
+    "list": "readme documentation settings test changelog license",
     "dependents": "$:/plugins/rimir/theme"
 }

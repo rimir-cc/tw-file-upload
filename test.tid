@@ -1,0 +1,31 @@
+caption: Test
+created: 20260312120000000
+modified: 20260312120000000
+title: $:/plugins/rimir/file-upload/test
+type: text/vnd.tiddlywiki
+
+!! Upload test
+
+<$file-dropzone actions="""
+<$action-createtiddler
+  $basetitle=<<filename>>
+  _canonical_uri=<<canonical-uri>>
+  _thumbnail_uri=<<generated-uri>>
+  _content_hash=<<content-hash>>
+  type=<<type>>
+/>
+""">
+
+<div style="border: 3px dashed #aaa; padding: 40px; text-align: center; border-radius: 8px; background: #f8f8f8;">
+
+''Drop or paste a file here''
+
+</div>
+
+</$file-dropzone>
+
+!! Last upload
+
+<$list filter="[[$:/temp/file-upload/last-upload]has[text]]" emptyMessage="//No upload yet//">
+<pre>{{$:/temp/file-upload/last-upload}}</pre>
+</$list>

@@ -23,6 +23,14 @@ Resolution (max dimension): <$edit-text tiddler="$:/config/rimir/file-upload/thu
 <$checkbox tiddler="$:/config/rimir/file-upload/thumb-rendering" field="text" checked="yes" unchecked="no" default="no"> Show thumbnails instead of full-size images by default <span class="rr-muted">(tiddlers with `_thumbnail_uri`)</span></$checkbox>
 </div>
 
+!! Allowed media types
+
+<div class="rr-input-row">
+<span class="rr-muted">JSON array of MIME types accepted for upload. Changes take effect immediately.</span>
+</div>
+
+<$edit-text tiddler="$:/config/rimir/file-upload/media-types" tag="textarea" class="rr-input" rows="6" default='["image/jpeg","image/png","image/gif","image/webp","image/svg+xml","application/pdf"]'/>
+
 !! Deduplication
 
 <div class="rr-input-row">

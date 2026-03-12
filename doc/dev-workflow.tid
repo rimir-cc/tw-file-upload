@@ -14,21 +14,13 @@ type: text/vnd.tiddlywiki
 !! Plugin files
 
 |!File |!Type |!Role |
-|`plugin.info` |metadata |Plugin metadata (v0.2.0) |
+|`plugin.info` |metadata |Plugin metadata |
 |`routes/upload.js` |`route` |`POST /api/file-upload` &mdash; receive base64 file, write to `/files/`, run thumbnail processor |
 |`routes/rename.js` |`route` |`POST /api/file-rename` &mdash; rename file on disk (incl. `_generated/`) |
 |`routes/delete.js` |`route` |`POST /api/file-delete` &mdash; delete file from disk (incl. `_generated/`) |
 |`widgets/dropzone.js` |`widget` |`<$file-dropzone>` &mdash; extends core dropzone, uploads via XHR |
 |`startup.js` |`startup` |Browser-side: registers `th-saving-tiddler` and `th-deleting-tiddler` hooks |
-|`config-media-types.tid` |data |Default allowed MIME types (JSON array) |
-|`config-file-paths.tid` |config |Filter for computing file paths from tiddler fields |
-|`config-processors.tid` |data |''Deprecated'' &mdash; superseded by `thumb-*` config tiddlers |
-|`config-thumb-images.tid` |config |Enable image thumbnail generation (`yes`/`no`) |
-|`config-thumb-pdfs.tid` |config |Enable PDF thumbnail generation (`yes`/`no`) |
-|`config-thumb-resolution.tid` |config |Thumbnail max dimension (e.g. `200` or `300x200`) |
-|`config-thumb-rendering.tid` |config |Show thumbnails by default (`yes`/`no`) |
-|`config-global-dedup.tid` |config |Global content-hash deduplication (`yes`/`no`) |
-|`settings.tid` |UI |Control Panel &rarr; Settings &rarr; File Upload |
+|`settings.tid` |UI |Control Panel &rarr; Settings &rarr; File Upload (thumbnails, media types, dedup) |
 |`cascade-thumbnail.tid` |cascade |ViewTemplateBodyFilter &mdash; routes to thumbnail body template |
 |`body-thumbnail.tid` |template |Body template: thumbnail with click-to-expand |
 |`toolbar-version-switch.tid` |toolbar |ViewToolbar button: toggle thumbnail/full-size |
@@ -38,13 +30,22 @@ type: text/vnd.tiddlywiki
 |`styles-thumbnail.tid` |stylesheet |CSS for thumbnail wrapper, full-view embed sizing |
 |`readme.tid` |doc |Plugin readme |
 
+!! Wiki config tiddlers
+
+These are ''not'' bundled in the plugin &mdash; they live in the wiki's tiddler store and are created via the settings UI or manually. All are read per request (no restart needed).
+
+|!Tiddler |!Type |!Role |
+|`$:/config/rimir/file-upload/media-types` |JSON array |Allowed MIME types for upload |
+|`$:/config/rimir/file-upload/thumb-images` |`yes`/`no` |Enable image thumbnail generation |
+|`$:/config/rimir/file-upload/thumb-pdfs` |`yes`/`no` |Enable PDF thumbnail generation |
+|`$:/config/rimir/file-upload/thumb-resolution` |string |Thumbnail max dimension (e.g. `200` or `300x200`) |
+|`$:/config/rimir/file-upload/thumb-rendering` |`yes`/`no` |Show thumbnails by default |
+|`$:/config/rimir/file-upload/global-dedup` |`yes`/`no` |Global content-hash deduplication |
+
 !! Restart rules
 
 |!Change |!Restart needed? |
-|Edit `config-media-types.tid` |No &mdash; read from `$tw.wiki` per request |
-|Edit `config-file-paths.tid` |No &mdash; read from `$tw.wiki` per request |
-|Edit `config-thumb-*.tid` |No &mdash; read from `$tw.wiki` per request |
-|Edit `config-global-dedup.tid` |No &mdash; read from `$tw.wiki` per request |
+|Edit wiki config tiddlers (media-types, thumb-*, global-dedup) |No &mdash; read from `$tw.wiki` per request |
 |Edit `runner-actions.json` |No for upload.js (reads per request) &mdash; Yes for runner plugin |
 |Edit `.tid` files (settings, styles, templates) |No &mdash; plugin tiddlers reload on restart, but config changes via UI take effect immediately |
 |Edit any `.js` module |Yes &mdash; JS modules load at boot |
