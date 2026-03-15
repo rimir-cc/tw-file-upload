@@ -1,0 +1,10 @@
+{
+    "description": "Test edition for file-upload",
+    "plugins": [
+        "tiddlywiki/jasmine"
+    ],
+    "themes": [
+        "tiddlywiki/vanilla",
+        "tiddlywiki/snowwhite"
+    ]
+}
