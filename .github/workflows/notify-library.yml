@@ -17,7 +17,7 @@ jobs:
         run: |
           mkdir -p /tmp/plugins/rimir/file-upload
           cp -r . /tmp/plugins/rimir/file-upload/
-          TIDDLYWIKI_PLUGIN_PATH=/tmp/plugins npx tiddlywiki test-edition --test
+          TIDDLYWIKI_PLUGIN_PATH=/tmp/plugins npx tiddlywiki test-edition --test spec="file-upload"
 
   notify:
     needs: test
