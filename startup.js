@@ -85,12 +85,13 @@ exports.startup = function() {
 
 	// --- Delete hook ---
 	$tw.hooks.addHook("th-deleting-tiddler", function(tiddler) {
+		if(!tiddler) return tiddler;
 		var uri = tiddler.fields._canonical_uri;
 		if(!uri || uri.indexOf("/files/") !== 0) {
-			return true;
+			return tiddler;
 		}
 		if(!confirm("Also delete the file from disk?\n" + uri)) {
-			return true;
+			return tiddler;
 		}
 		// Fire-and-forget async XHR
 		var xhr = new XMLHttpRequest();
@@ -98,7 +99,7 @@ exports.startup = function() {
 		xhr.setRequestHeader("Content-Type", "application/json");
 		xhr.setRequestHeader("X-Requested-With", "TiddlyWiki");
 		xhr.send(JSON.stringify({uri: uri}));
-		return true;
+		return tiddler;
 	});
 };
 
