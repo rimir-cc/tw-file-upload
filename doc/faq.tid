@@ -1,0 +1,27 @@
+created: 20260315120000000
+modified: 20260315120000000
+rdt.order: 5
+rdt.plugin-key: file-upload
+rdt.plugin-name: file upload
+rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.section: FAQ
+title: $:/plugins/rimir/file-upload/doc/faq
+type: text/vnd.tiddlywiki
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/page">
+<$fill $name="body">
+
+!! Q: Why does thumbnail generation fail for PDFs?
+
+PDF thumbnails require both ImageMagick and Ghostscript installed on the server's PATH. ImageMagick delegates PDF rasterisation to Ghostscript (`gs` on Linux, `gswin64c` on Windows). Verify both are installed and accessible from the command line.
+
+!! Q: I renamed a tiddler but the file on disk wasn't renamed. Why?
+
+The rename hook triggers on `th-saving-tiddler`, which fires during editor save-with-new-title (the standard rename flow). If you used `$action-setfield` or direct wiki manipulation to change the title, the hook does not fire. Rename only works through the editor's built-in rename mechanism.
+
+!! Q: Can I upload files larger than 50MB?
+
+The upload route rejects JSON bodies larger than 50MB (the file is base64-encoded in the JSON payload, so the effective file size limit is roughly 37MB). This limit is hardcoded in the route handler to prevent memory issues. For larger files, upload them directly to the `/files/` directory on disk and create tiddlers with `_canonical_uri` manually.
+
+</$fill>
+</$transclude>

@@ -1,0 +1,80 @@
+created: 20260315120000000
+modified: 20260315120000000
+rdt.order: 6
+rdt.plugin-key: file-upload
+rdt.plugin-name: file upload
+rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.section: Reference
+title: $:/plugins/rimir/file-upload/doc/reference
+type: text/vnd.tiddlywiki
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/page">
+<$fill $name="body">
+
+!! Widget: `<$file-dropzone>`
+
+|!Attribute |!Description |
+|`actions` |Action string executed on upload completion |
+|`subfolder` |Optional subfolder override (bypasses file-paths filter) |
+|`prop-*` |Extra fields passed through as action variables |
+
+Action variables available in `actions`:
+
+|!Variable |!Description |
+|`<<data>>` |Raw JSON response body |
+|`<<type>>` |MIME type of uploaded file |
+|`<<filename>>` |Original filename |
+|`<<content-hash>>` |Content hash (8-char hex) |
+|`<<canonical-uri>>` |Canonical URI of the uploaded file (e.g. `/files/images/photo.jpg`) |
+|`<<generated-uri>>` |Thumbnail URI if processor ran, empty otherwise |
+
+!! Server routes
+
+!!! POST /api/file-upload
+
+|!Request field |!Description |
+|`filename` |Original filename |
+|`type` |MIME type |
+|`content` |Base64-encoded file content |
+|`targetPath` |Computed target path under `/files/` |
+
+|!Status |!Meaning |
+|200 |Success — returns `{canonicalUri, filename, generatedUri?}` |
+|400 |Missing fields or invalid JSON |
+|403 |Path traversal detected |
+|413 |Upload too large (>50MB JSON) |
+|415 |MIME type not in whitelist |
+
+!!! POST /api/file-rename
+
+|!Request field |!Description |
+|`oldUri` |Current canonical URI |
+|`newUri` |Desired canonical URI |
+
+|!Status |!Meaning |
+|200 |Success — returns `{newCanonicalUri}` |
+|404 |Source file not found |
+|409 |Target file already exists |
+
+!!! POST /api/file-delete
+
+|!Request field |!Description |
+|`uri` |Canonical URI to delete |
+
+|!Status |!Meaning |
+|200 |Success — returns `{deleted: true}` |
+|404 |File not found |
+
+!! Config tiddlers
+
+|!Tiddler |!Default |!Description |
+|`$:/config/rimir/file-upload/media-types` |JSON array |Allowed MIME types for upload |
+|`$:/config/rimir/file-upload/thumb-images` |`no` |Enable image thumbnail generation |
+|`$:/config/rimir/file-upload/thumb-pdfs` |`no` |Enable PDF thumbnail generation |
+|`$:/config/rimir/file-upload/thumb-resolution` |`200` |Thumbnail max dimension |
+|`$:/config/rimir/file-upload/thumb-rendering` |`no` |Show thumbnails by default in view mode |
+|`$:/config/rimir/file-upload/global-dedup` |`no` |Global content-hash deduplication |
+|`$:/config/rimir/file-upload/file-paths` |filter |TW filter computing target path under `/files/` |
+
+</$fill>
+</$transclude>

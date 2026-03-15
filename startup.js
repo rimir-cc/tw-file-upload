@@ -25,6 +25,7 @@ exports.startup = function() {
 	// th-saving-tiddler (not th-renaming-tiddler). We detect the rename
 	// by comparing draft.of with the new title, then rename the file.
 	$tw.hooks.addHook("th-saving-tiddler", function(newTiddler, draftTiddler) {
+		if(!newTiddler || !draftTiddler) return newTiddler;
 		var draftOf = (draftTiddler.fields["draft.of"] || "").trim();
 		if(!draftOf || draftOf === newTiddler.fields.title) {
 			return newTiddler;
@@ -63,6 +64,7 @@ exports.startup = function() {
 
 	// --- Also keep th-renaming-tiddler for programmatic renames ---
 	$tw.hooks.addHook("th-renaming-tiddler", function(newTiddler, oldTiddler) {
+		if(!newTiddler || !oldTiddler) return newTiddler;
 		var oldUri = oldTiddler.fields._canonical_uri;
 		if(!oldUri || oldUri.indexOf("/files/") !== 0) {
 			return newTiddler;

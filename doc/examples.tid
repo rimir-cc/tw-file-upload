@@ -1,0 +1,50 @@
+created: 20260315120000000
+modified: 20260315120000000
+rdt.order: 4
+rdt.plugin-key: file-upload
+rdt.plugin-name: file upload
+rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.section: Examples
+title: $:/plugins/rimir/file-upload/doc/examples
+type: text/vnd.tiddlywiki
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/page">
+<$fill $name="body">
+
+!! Basic dropzone with tiddler creation
+
+```
+<$file-dropzone actions="""
+<$action-createtiddler
+  $basetitle=<<filename>>
+  _canonical_uri=<<canonical-uri>>
+  _thumbnail_uri=<<generated-uri>>
+  _content_hash=<<content-hash>>
+  type=<<type>>
+/>
+""">
+Drop files here
+</$file-dropzone>
+```
+
+This creates a tiddler named after the file, with `_canonical_uri` pointing to the uploaded file on disk. If thumbnail generation is enabled, `_thumbnail_uri` points to the generated thumbnail.
+
+!! Dropzone with custom tags and subfolder
+
+```
+<$file-dropzone subfolder="project-assets" actions="""
+<$action-createtiddler
+  $basetitle=<<filename>>
+  _canonical_uri=<<canonical-uri>>
+  tags="asset project"
+  type=<<type>>
+/>
+""">
+Drop project assets here
+</$file-dropzone>
+```
+
+The `subfolder` attribute overrides the file-paths filter and places all uploads in `/files/project-assets/`.
+
+</$fill>
+</$transclude>

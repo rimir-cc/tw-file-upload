@@ -1,0 +1,39 @@
+created: 20260315120000000
+modified: 20260315120000000
+rdt.order: 7
+rdt.plugin-key: file-upload
+rdt.plugin-name: file upload
+rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.section: TW Internals
+title: $:/plugins/rimir/file-upload/doc/tw-internals
+type: text/vnd.tiddlywiki
+
+<$transclude $tiddler="$:/plugins/rimir/doc-template/templates/page">
+<$fill $name="body">
+
+!! th-saving-tiddler hook
+
+Used by `startup.js` to intercept tiddler renames. When a tiddler with `_canonical_uri` is saved with a different title than `draft.of`, the hook sends a synchronous XHR to the rename route and updates `_canonical_uri` on the new tiddler. The hook must return the (possibly modified) tiddler synchronously.
+
+!! th-deleting-tiddler hook
+
+Intercepts tiddler deletion. If the tiddler has `_canonical_uri`, shows a confirmation dialog asking whether to also delete the file on disk. If confirmed, sends an async XHR to the delete route.
+
+!! $tw.utils.httpRequest
+
+The `<$file-dropzone>` widget uses `$tw.utils.httpRequest` (TiddlyWiki's built-in XHR wrapper) instead of the `tm-http-request` message. This allows the widget to parse the JSON response directly and extract `canonical-uri` and `generated-uri` as variables for the `actions` callback. The `tm-http-request` message does not provide response parsing hooks.
+
+!! ViewTemplateBodyFilter cascade
+
+`cascade-thumbnail.tid` is tagged `$:/tags/ViewTemplateBodyFilter`. TiddlyWiki evaluates body filters in order — the first to return a non-empty result determines which body template renders the tiddler. The thumbnail cascade checks for `_thumbnail_uri` and enabled thumb-rendering config, routing matching tiddlers to `body-thumbnail.tid`.
+
+!! module-type: route
+
+The upload, rename, and delete JS files use `module-type: route`, which TiddlyWiki's server framework discovers at boot and registers as HTTP request handlers. Each route exports `method`, `path` (regex), and `handler`.
+
+!! bodyFormat: "stream"
+
+The upload route sets `bodyFormat: "stream"` to prevent TiddlyWiki's server from buffering the entire request body into memory before calling the handler. Base64-encoded files can be large, so streaming avoids default body size limits.
+
+</$fill>
+</$transclude>
