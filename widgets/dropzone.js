@@ -23,6 +23,9 @@ Attributes:
 "use strict";
 
 var DropZoneWidget = require("$:/core/modules/widgets/dropzone.js").dropzone;
+var helpers = require("$:/plugins/rimir/file-upload/helpers");
+var getSubfolderForType = helpers.getSubfolderForType;
+var sanitizePath = helpers.sanitizePath;
 
 var FileDropZoneWidget = function(parseTreeNode, options) {
 	this.initialise(parseTreeNode, options);
@@ -252,17 +255,6 @@ FileDropZoneWidget.prototype.computeTargetPath = function(tiddlerFields) {
 	return tiddlerFields.title;
 };
 
-// Route files to subfolders by MIME type
-function getSubfolderForType(mimeType) {
-	if(mimeType.indexOf("image/") === 0) {
-		return "images";
-	}
-	if(mimeType === "application/pdf") {
-		return "pdf";
-	}
-	return "";
-}
-
 // Simple hash: djb2 on the first 1024 chars of base64, returned as 8-char hex
 function computeHash(base64Content) {
 	var sample = (base64Content || "").substring(0, 1024);
@@ -284,14 +276,6 @@ function appendHashToPath(targetPath, hash) {
 		return dir + filename.substring(0, dotPos) + "-" + hash + filename.substring(dotPos);
 	}
 	return dir + filename + "-" + hash;
-}
-
-function sanitizePath(p) {
-	p = p.replace(/\\/g, "/");
-	if(p.charAt(0) === "/") {
-		p = p.substring(1);
-	}
-	return p;
 }
 
 exports["file-dropzone"] = FileDropZoneWidget;

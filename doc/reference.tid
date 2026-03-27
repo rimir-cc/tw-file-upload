@@ -15,7 +15,7 @@ type: text/vnd.tiddlywiki
 
 |!Attribute |!Description |
 |`actions` |Action string executed on upload completion |
-|`subfolder` |Optional subfolder override (bypasses file-paths filter) |
+|`subfolder` |Optional subfolder override (bypasses built-in routing) |
 |`prop-*` |Extra fields passed through as action variables |
 
 Action variables available in `actions`:
@@ -74,7 +74,6 @@ Action variables available in `actions`:
 |`$:/config/rimir/file-upload/thumb-resolution` |`200` |Thumbnail max dimension |
 |`$:/config/rimir/file-upload/thumb-rendering` |`no` |Show thumbnails by default in view mode |
 |`$:/config/rimir/file-upload/global-dedup` |`no` |Global content-hash deduplication |
-|`$:/config/rimir/file-upload/file-paths` |filter |TW filter computing target path under `/files/` |
 
 </$fill>
 </$transclude>

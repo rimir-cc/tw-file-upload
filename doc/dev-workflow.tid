@@ -32,7 +32,7 @@ type: text/vnd.tiddlywiki
 
 !! Wiki config tiddlers
 
-These are ''not'' bundled in the plugin &mdash; they live in the wiki's tiddler store and are created via the settings UI or manually. All are read per request (no restart needed).
+These live in the wiki's tiddler store. `media-types` is bundled as a shadow tiddler with the plugin (default whitelist). Others are created via the settings UI or manually. All are read per request (no restart needed).
 
 |!Tiddler |!Type |!Role |
 |`$:/config/rimir/file-upload/media-types` |JSON array |Allowed MIME types for upload |
@@ -115,27 +115,15 @@ Request:
 
 Edit `$:/config/rimir/file-upload/media-types` (JSON array) to add or remove allowed MIME types. Changes take effect immediately (no restart needed).
 
-!!! File paths filter
+!!! File path routing
 
-`$:/config/rimir/file-upload/file-paths` is a TW filter that computes the target path under `/files/`. The temp tiddler's fields are available as input: `filename` (original name) and `type` (MIME type).
+Target paths under `/files/` are computed by the `<$file-dropzone>` widget using built-in routing logic (first match wins):
 
-Default:
-
-```
-[get[upload-folder]addsuffix[/]addsuffix{!!filename}]
-[get[type]prefix[image/]then[images/]addsuffix{!!filename}]
-[get[type]match[application/pdf]then[pdf/]addsuffix{!!filename}]
-[get[filename]]
-```
-
-Filter steps (first match wins):
-
-# If `upload-folder` is set (via `prop-upload-folder` on the widget), use `<upload-folder>/<filename>`
-# If type starts with `image/` &rarr; `images/<filename>`
-# If type is `application/pdf` &rarr; `pdf/<filename>`
+# If `subfolder` attribute is set on the widget &rarr; `<subfolder>/<filename>`
+# If `prop-upload-folder` attribute is set &rarr; `<upload-folder>/<filename>`
+# If MIME type starts with `image/` &rarr; `images/<filename>`
+# If MIME type is `application/pdf` &rarr; `pdf/<filename>`
 # Fallback: just `<filename>` (root of `/files/`)
-
-The `subfolder` attribute on `<$file-dropzone>` overrides this filter entirely if set.
 
 !!! Thumbnails
 
@@ -170,7 +158,7 @@ PDF thumbnails require both ImageMagick and Ghostscript on the server's `PATH`. 
 
 |!Attribute |!Description |
 |`actions` |Action string executed on upload completion |
-|`subfolder` |Optional subfolder override (bypasses filter) |
+|`subfolder` |Optional subfolder override (bypasses built-in routing) |
 |`prop-*` |Extra fields passed through as action variables |
 
 Action variables available in `actions`:

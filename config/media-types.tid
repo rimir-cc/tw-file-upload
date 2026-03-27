@@ -1,0 +1,4 @@
+title: $:/config/rimir/file-upload/media-types
+type: application/json
+
+["image/jpeg","image/png","image/gif","image/webp","image/svg+xml","application/pdf"]
