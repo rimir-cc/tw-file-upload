@@ -6,6 +6,7 @@ type: text/vnd.tiddlywiki
 ! Changelog
 
 |!Version |!Date |!Changes |
+|v0.1.11 |2026-04-07 |Add `target-prefix` attribute to `<$file-dropzone>`: inserts path prefix between subfolder and filename on disk, exposed as variable in action string for tiddler title construction |
 |v0.1.10 |2026-04-07 |EXIF extraction: auto-extract metadata from uploaded images via ImageMagick and map to tiddler fields. Configurable global field mapping + per-location overrides. Extracts date, camera, dimensions, GPS, exposure, lens. Enabled by default. |
 |v0.1.9 |2026-04-07 |Fix thumbnail cascade: position filter first in ViewTemplateBodyFilter chain (some third-party plugins break cascade evaluation for subsequent filters). Fix draft deletion: skip draft tiddlers in file cleanup to prevent accidental file deletion when cancelling editor. Remove redundant `all[current]` from cascade filter (`:cascade` already provides input title) |
 |v0.1.8 |2026-04-07 |Location registry: multi-location support with writable/read-only flag, uri-resolver library, artifact cascade (delete/rename propagates to `_artifact_source` tiddlers), location management UI in settings, `location` attribute on `<$file-dropzone>`, `serve-location` route for user-created locations, optional integration with scattered-binaries and llm-connect |

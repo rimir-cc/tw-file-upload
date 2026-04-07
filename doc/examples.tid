@@ -46,5 +46,25 @@ Drop project assets here
 
 The `subfolder` attribute overrides the file-paths filter and places all uploads in `/files/project-assets/`.
 
+!! Dropzone with target-prefix for nested paths
+
+```
+<$file-dropzone location="private-files" target-prefix="x/y/z" actions="""
+<$action-createtiddler
+  $basetitle=`$(target-prefix)$/$(filename)$`
+  _canonical_uri=<<canonical-uri>>
+  _thumbnail_uri=<<generated-uri>>
+  _content_hash=<<content-hash>>
+  type=<<type>>
+  $savetitle="$:/temp/file-upload/last-created"/>
+<$action-listops $tiddler="$:/temp/file-upload/recent"
+  $subfilter="[{$:/temp/file-upload/last-created}]"/>
+""">
+Drop files here
+</$file-dropzone>
+```
+
+The `target-prefix` attribute inserts a path prefix between the MIME-type subfolder and the filename. A file `photo.jpg` is placed at `images/x/y/z/photo.jpg` on disk. The prefix is also available as `<<target-prefix>>` in the action string for constructing the tiddler title.
+
 </$fill>
 </$transclude>

@@ -3,7 +3,7 @@
     "description": "Upload files to configurable locations with rename, delete, thumbnails, artifact cascade, and deduplication",
     "name": "file upload",
     "author": "rimir",
-    "version": "0.1.10",
+    "version": "0.1.11",
     "core-version": ">=5.3.0",
     "source": "https://github.com/rimir-cc/tw-file-upload",
     "plugin-type": "plugin",

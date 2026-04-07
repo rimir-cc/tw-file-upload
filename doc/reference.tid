@@ -50,6 +50,7 @@ Derived data linked to a parent file tiddler. Used by cascade delete/rename.
 |`actions` |Action string executed on upload completion |
 |`location` |Target location name (default: `"files"`). Must be writable. |
 |`subfolder` |Optional subfolder override (bypasses built-in routing) |
+|`target-prefix` |Path prefix inserted between subfolder and filename on disk. Also exposed as `<<target-prefix>>` variable in action string. |
 |`prop-*` |Extra fields passed through as action variables |
 
 Action variables available in `actions`:
@@ -62,6 +63,7 @@ Action variables available in `actions`:
 |`<<canonical-uri>>` |Canonical URI of the uploaded file (e.g. `/files/images/photo.jpg`) |
 |`<<generated-uri>>` |Thumbnail URI if processor ran, empty otherwise |
 |`<<location>>` |Target location name |
+|`<<target-prefix>>` |Value of `target-prefix` attribute (if set) |
 
 !! Server routes
 

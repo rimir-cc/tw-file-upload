@@ -12,13 +12,14 @@ path already exists and has the same hash, the upload is skipped. If the hash
 differs, a unique filename is generated (e.g. grafik-a3f2b1c0.png).
 
 Attributes:
-  actions   — action string executed on completion. Variables available:
-              data (raw JSON), type, filename, content-hash,
-              canonical-uri, generated-uri (thumbnail URI if processor ran),
-              location (target location name)
-  location  — target location name (default: "files"). Must be writable.
-  subfolder — optional override for target subfolder (overrides filter)
-  prop-*    — extra fields passed through as action variables
+  actions       — action string executed on completion. Variables available:
+                  data (raw JSON), type, filename, content-hash,
+                  canonical-uri, generated-uri (thumbnail URI if processor ran),
+                  location (target location name), target-prefix (if set)
+  location      — target location name (default: "files"). Must be writable.
+  subfolder     — optional override for target subfolder (overrides filter)
+  target-prefix — path prefix inserted between subfolder and filename on disk
+  prop-*        — extra fields passed through as action variables
 
 \*/
 
@@ -47,6 +48,7 @@ FileDropZoneWidget.prototype.execute = function() {
 	};
 	this.properties = getPropertiesWithPrefix(this.attributes, "prop-");
 	this.subfolder = this.getAttribute("subfolder");
+	this.targetPrefix = this.getAttribute("target-prefix");
 	this.location = this.getAttribute("location", "files");
 	DropZoneWidget.prototype.execute.call(this);
 };
@@ -129,12 +131,16 @@ FileDropZoneWidget.prototype.readFileCallback = function(tiddlerFieldsArray) {
 			targetPath: targetPath,
 			location: this.location
 		};
-		this.performUpload(body, {
+		var baseVars = {
 			type: type,
 			filename: toImport.title,
 			"content-hash": contentHash,
 			location: this.location
-		});
+		};
+		if(this.targetPrefix) {
+			baseVars["target-prefix"] = this.targetPrefix;
+		}
+		this.performUpload(body, baseVars);
 	}
 	// Write batch result to temp tiddler (includes both uploaded and skipped)
 	this.wiki.addTiddler(new $tw.Tiddler({
@@ -308,20 +314,21 @@ FileDropZoneWidget.prototype.getLocationUriPrefix = function() {
 };
 
 FileDropZoneWidget.prototype.computeTargetPath = function(tiddlerFields) {
+	var prefix = this.targetPrefix ? this.targetPrefix + "/" : "";
 	// If subfolder attribute is set, use it directly
 	if(this.subfolder) {
-		return this.subfolder + "/" + tiddlerFields.title;
+		return this.subfolder + "/" + prefix + tiddlerFields.title;
 	}
 	// If prop-upload-folder is set, use it
 	if(this.properties["upload-folder"]) {
-		return this.properties["upload-folder"] + "/" + tiddlerFields.title;
+		return this.properties["upload-folder"] + "/" + prefix + tiddlerFields.title;
 	}
 	// Route by MIME type
 	var subfolder = getSubfolderForType(tiddlerFields.type || "");
 	if(subfolder) {
-		return subfolder + "/" + tiddlerFields.title;
+		return subfolder + "/" + prefix + tiddlerFields.title;
 	}
-	return tiddlerFields.title;
+	return prefix + tiddlerFields.title;
 };
 
 // Simple hash: djb2 on the first 1024 chars of base64, returned as 8-char hex
