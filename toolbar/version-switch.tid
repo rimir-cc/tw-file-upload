@@ -6,7 +6,7 @@ tags: $:/tags/ViewToolbar
 title: $:/plugins/rimir/file-upload/toolbar/version-switch
 type: text/vnd.tiddlywiki
 
-\define thumb-state() $:/state/file-upload/view-mode/$(currentTiddler)$
+\function thumb-state() [<currentTiddler>addprefix[$:/state/file-upload/view-mode/]]
 
 <$list filter="[all[current]has[_thumbnail_uri]]" variable="ignore">
 <$reveal type="nomatch" state=<<thumb-state>> text="full" tag="span">

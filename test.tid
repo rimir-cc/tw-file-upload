@@ -16,7 +16,7 @@ type: text/vnd.tiddlywiki
 />
 """>
 
-<div style="border: 3px dashed #aaa; padding: 40px; text-align: center; border-radius: 8px; background: #f8f8f8;">
+<div style="border: 3px dashed <<colour muted-foreground>>; padding: 40px; text-align: center; border-radius: 8px; background: <<colour code-background>>;">
 
 ''Drop or paste a file here''
 

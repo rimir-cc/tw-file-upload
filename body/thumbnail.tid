@@ -3,7 +3,7 @@ modified: 20260305110602313
 title: $:/plugins/rimir/file-upload/body/thumbnail
 type: text/vnd.tiddlywiki
 
-\define thumb-state() $:/state/file-upload/view-mode/$(currentTiddler)$
+\function thumb-state() [<currentTiddler>addprefix[$:/state/file-upload/view-mode/]]
 
 <$reveal type="nomatch" state=<<thumb-state>> text="full" tag="div" class="fu-thumbnail-wrapper">
 <$button class="fu-thumbnail-click" actions="<$action-setfield $tiddler=<<thumb-state>> text='full'/>">
