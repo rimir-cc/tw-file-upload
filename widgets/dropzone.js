@@ -187,8 +187,50 @@ FileDropZoneWidget.prototype.performUpload = function(body, vars) {
 			if(self.actions) {
 				self.invokeActionString(self.actions, self, null, variables);
 			}
+			// Auto-apply EXIF fields to the created tiddler
+			if(responseData && responseData.exif && responseData.canonicalUri) {
+				self.applyExifFields(responseData.canonicalUri, responseData.exif, vars.location || "files");
+			}
 		}
 	});
+};
+
+/*
+Auto-apply EXIF data to the tiddler that was just created with the given canonical URI.
+Reads field mapping from per-location config (fallback to global default).
+*/
+FileDropZoneWidget.prototype.applyExifFields = function(canonicalUri, exifData, locationName) {
+	// Find the tiddler by _canonical_uri
+	var targetTitle = this.findTiddlerByCanonicalUri(canonicalUri);
+	if(!targetTitle) return;
+	var tiddler = this.wiki.getTiddler(targetTitle);
+	if(!tiddler) return;
+	// Read field mapping: try per-location first, then global
+	var mapping = null;
+	var perLocationTitle = "$:/config/rimir/file-upload/exif-mapping/" + locationName;
+	var perLocationTiddler = this.wiki.getTiddler(perLocationTitle);
+	if(perLocationTiddler) {
+		try { mapping = JSON.parse(perLocationTiddler.fields.text); } catch(e) {}
+	}
+	if(!mapping) {
+		var globalTiddler = this.wiki.getTiddler("$:/config/rimir/file-upload/exif-mapping");
+		if(globalTiddler) {
+			try { mapping = JSON.parse(globalTiddler.fields.text); } catch(e) {}
+		}
+	}
+	if(!mapping) return;
+	// Apply mapping: keys are EXIF tag names, values are tiddler field names
+	var updates = {};
+	var hasUpdates = false;
+	for(var exifTag in mapping) {
+		if(exifData[exifTag] !== undefined && exifData[exifTag] !== null) {
+			updates[mapping[exifTag]] = String(exifData[exifTag]);
+			hasUpdates = true;
+		}
+	}
+	if(hasUpdates) {
+		this.wiki.addTiddler(new $tw.Tiddler(tiddler, updates));
+	}
 };
 
 FileDropZoneWidget.prototype.notifySkipped = function(skippedArray) {

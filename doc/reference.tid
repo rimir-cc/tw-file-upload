@@ -75,7 +75,7 @@ Action variables available in `actions`:
 |`location` |Target location name (default: `"files"`) |
 
 |!Status |!Meaning |
-|200 |Success — returns `{canonicalUri, filename, location, generatedUri?}` |
+|200 |Success — returns `{canonicalUri, filename, location, generatedUri?, exif?}` |
 |400 |Missing fields, invalid JSON, or unknown location |
 |403 |Path traversal detected or location is read-only |
 |413 |Upload too large (>50MB JSON) |
@@ -112,6 +112,19 @@ Action variables available in `actions`:
 |`$:/config/rimir/file-upload/thumb-resolution` |`200` |Thumbnail max dimension |
 |`$:/config/rimir/file-upload/thumb-rendering` |`no` |Show thumbnails by default in view mode |
 |`$:/config/rimir/file-upload/global-dedup` |`no` |Global content-hash deduplication |
+|`$:/config/rimir/file-upload/exif-extraction` |`yes` |Extract EXIF metadata from uploaded images (requires ImageMagick) |
+|`$:/config/rimir/file-upload/exif-mapping` |JSON object |Global EXIF-to-field mapping: `{"ExifTag": "tiddler-field"}` |
+|`$:/config/rimir/file-upload/exif-mapping/<loc>` |JSON object |Per-location override (replaces global mapping for that location) |
+
+!! EXIF extraction
+
+When enabled, EXIF metadata is extracted from uploaded images via `magick.exe identify` and auto-applied as tiddler fields based on the field mapping config.
+
+Available EXIF tags: `DateTimeOriginal`, `Make`, `Model`, `ExifImageWidth`, `ExifImageHeight`, `GPSLatitudeDecimal`, `GPSLongitudeDecimal`, `Orientation`, `ExposureTime`, `FNumber`, `ISO`, `FocalLength`, `LensModel`.
+
+Default mapping produces fields: `exif-date`, `exif-make`, `exif-model`, `exif-width`, `exif-height`, `exif-gps-lat`, `exif-gps-lon`, `exif-orientation`, `exif-exposure`, `exif-fnumber`, `exif-iso`, `exif-focal-length`, `exif-lens`.
+
+Per-location overrides: create `$:/config/rimir/file-upload/exif-mapping/<location-name>` with a JSON object to use different field names for a specific location.
 
 </$fill>
 </$transclude>

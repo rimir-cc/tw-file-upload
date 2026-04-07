@@ -1,0 +1,4 @@
+title: $:/config/rimir/file-upload/exif-mapping
+type: application/json
+
+{"DateTimeOriginal":"exif-date","Make":"exif-make","Model":"exif-model","ExifImageWidth":"exif-width","ExifImageHeight":"exif-height","GPSLatitudeDecimal":"exif-gps-lat","GPSLongitudeDecimal":"exif-gps-lon","Orientation":"exif-orientation","ExposureTime":"exif-exposure","FNumber":"exif-fnumber","ISO":"exif-iso","FocalLength":"exif-focal-length","LensModel":"exif-lens"}

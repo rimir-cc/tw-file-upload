@@ -100,6 +100,24 @@ Resolution (max dimension): <$edit-text tiddler="$:/config/rimir/file-upload/thu
 
 <$edit-text tiddler="$:/config/rimir/file-upload/media-types" tag="textarea" class="rr-input" rows="6" default='["image/jpeg","image/png","image/gif","image/webp","image/svg+xml","application/pdf"]'/>
 
+!! EXIF extraction
+
+<div class="rr-input-row">
+<$checkbox tiddler="$:/config/rimir/file-upload/exif-extraction" field="text" checked="yes" unchecked="no" default="yes"> Extract EXIF metadata from uploaded images <span class="rr-muted">(requires ImageMagick)</span></$checkbox>
+</div>
+
+<div class="rr-input-row">
+<span class="rr-muted">Field mapping: EXIF tags are mapped to tiddler fields. Global default applies to all locations. Create `$:/config/rimir/file-upload/exif-mapping/<location-name>` to override per location.</span>
+</div>
+
+<div class="rr-input-row">
+<details>
+<summary>Global EXIF field mapping</summary>
+<$edit-text tiddler="$:/config/rimir/file-upload/exif-mapping" tag="textarea" class="rr-input" rows="8"/>
+<div class="rr-muted rr-small">JSON object: `{"ExifTagName": "tiddler-field-name", ...}`. Available tags: `DateTimeOriginal`, `Make`, `Model`, `ExifImageWidth`, `ExifImageHeight`, `GPSLatitudeDecimal`, `GPSLongitudeDecimal`, `Orientation`, `ExposureTime`, `FNumber`, `ISO`, `FocalLength`, `LensModel`.</div>
+</details>
+</div>
+
 !! Deduplication
 
 <div class="rr-input-row">

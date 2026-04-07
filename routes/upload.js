@@ -104,12 +104,22 @@ function handleUpload(data, response) {
 		if(prefix.charAt(prefix.length - 1) !== "/") prefix += "/";
 		var canonicalUri = prefix + relPath;
 		var result = {canonicalUri: canonicalUri, filename: filename, location: locationName};
-		// Post-upload processing (thumbnails)
+		// Post-upload processing (thumbnails + EXIF)
 		runProcessor(type, resolved, canonicalUri, basePath, function(generatedUri) {
 			if(generatedUri) {
 				result.generatedUri = generatedUri;
 			}
-			sendJson(response, 200, result);
+			// Extract EXIF data for images
+			if(isExifEnabled() && type.indexOf("image/") === 0) {
+				extractExif(resolved, function(exif) {
+					if(exif) {
+						result.exif = exif;
+					}
+					sendJson(response, 200, result);
+				});
+			} else {
+				sendJson(response, 200, result);
+			}
 		});
 	});
 }
@@ -201,6 +211,99 @@ function runProcessor(mimeType, inputPath, canonicalUri, basePath, callback) {
 			callback(prefix + relPath);
 		}
 	});
+}
+
+function isExifEnabled() {
+	var tiddler = $tw.wiki.getTiddler("$:/config/rimir/file-upload/exif-extraction");
+	// Default: yes (enabled unless explicitly disabled)
+	return !tiddler || (tiddler.fields.text || "").trim() !== "no";
+}
+
+/*
+Extract EXIF data from an image using ImageMagick identify.
+Returns a flat object with EXIF tag names as keys via callback.
+*/
+function extractExif(filePath, callback) {
+	// Use magick identify with JSON output for reliable parsing
+	var command = 'magick.exe identify -format "' +
+		'%[EXIF:DateTimeOriginal]||' +
+		'%[EXIF:Make]||' +
+		'%[EXIF:Model]||' +
+		'%[EXIF:ImageWidth]||' +
+		'%[EXIF:ImageHeight]||' +
+		'%[width]||' +
+		'%[height]||' +
+		'%[EXIF:GPSLatitude]||' +
+		'%[EXIF:GPSLatitudeRef]||' +
+		'%[EXIF:GPSLongitude]||' +
+		'%[EXIF:GPSLongitudeRef]||' +
+		'%[EXIF:Orientation]||' +
+		'%[EXIF:ExposureTime]||' +
+		'%[EXIF:FNumber]||' +
+		'%[EXIF:ISOSpeedRatings]||' +
+		'%[EXIF:FocalLength]||' +
+		'%[EXIF:LensModel]' +
+		'" "' + filePath + '"';
+	child_process.exec(command, {timeout: 10000}, function(err, stdout) {
+		if(err) {
+			logger.log("EXIF extraction failed: " + err.message);
+			callback(null);
+			return;
+		}
+		var parts = (stdout || "").split("||");
+		var fields = [
+			"DateTimeOriginal", "Make", "Model",
+			"ExifImageWidth", "ExifImageHeight",
+			"PixelWidth", "PixelHeight",
+			"GPSLatitude", "GPSLatitudeRef",
+			"GPSLongitude", "GPSLongitudeRef",
+			"Orientation",
+			"ExposureTime", "FNumber", "ISO",
+			"FocalLength", "LensModel"
+		];
+		var exif = {};
+		for(var i = 0; i < fields.length && i < parts.length; i++) {
+			var val = (parts[i] || "").trim();
+			if(val && val !== "unknown") {
+				exif[fields[i]] = val;
+			}
+		}
+		// Use pixel dimensions as fallback if EXIF dimensions missing
+		if(!exif.ExifImageWidth && exif.PixelWidth) {
+			exif.ExifImageWidth = exif.PixelWidth;
+		}
+		if(!exif.ExifImageHeight && exif.PixelHeight) {
+			exif.ExifImageHeight = exif.PixelHeight;
+		}
+		delete exif.PixelWidth;
+		delete exif.PixelHeight;
+		// Convert GPS DMS to decimal if present
+		if(exif.GPSLatitude) {
+			exif.GPSLatitudeDecimal = dmsToDecimal(exif.GPSLatitude, exif.GPSLatitudeRef);
+		}
+		if(exif.GPSLongitude) {
+			exif.GPSLongitudeDecimal = dmsToDecimal(exif.GPSLongitude, exif.GPSLongitudeRef);
+		}
+		callback(Object.keys(exif).length > 0 ? exif : null);
+	});
+}
+
+/*
+Convert EXIF GPS DMS string "deg/1, min/1, sec/100" + ref "N"/"S"/"E"/"W" to decimal.
+*/
+function dmsToDecimal(dms, ref) {
+	try {
+		var parts = dms.split(",").map(function(p) {
+			var frac = p.trim().split("/");
+			return frac.length === 2 ? parseFloat(frac[0]) / parseFloat(frac[1]) : parseFloat(frac[0]);
+		});
+		if(parts.length < 3) return null;
+		var decimal = parts[0] + parts[1] / 60 + parts[2] / 3600;
+		if(ref === "S" || ref === "W") decimal = -decimal;
+		return decimal.toFixed(6);
+	} catch(e) {
+		return null;
+	}
 }
 
 function sendJson(response, statusCode, data) {
