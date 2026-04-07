@@ -3,7 +3,7 @@ modified: 20260315120000000
 rdt.order: 6
 rdt.plugin-key: file-upload
 rdt.plugin-name: file upload
-rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.plugin-subtitle: Upload files to configurable locations with rename, delete, thumbnails, artifact cascade, and deduplication
 rdt.section: Reference
 title: $:/plugins/rimir/file-upload/doc/reference
 type: text/vnd.tiddlywiki
@@ -11,10 +11,44 @@ type: text/vnd.tiddlywiki
 <$transclude $tiddler="$:/plugins/rimir/doc-template/templates/page">
 <$fill $name="body">
 
+!! Location Registry
+
+Locations are tiddlers tagged `$:/tags/rimir/file-upload/location` with `type: application/json`. JSON fields:
+
+|!Field |!Type |!Description |
+|`name` |string |Unique location name (used in widget `location` attribute and upload API) |
+|`uriPrefix` |string |URI path prefix (e.g. `/files/`, `/project-assets/`) |
+|`writable` |boolean |Whether upload/delete/rename operations are allowed |
+|`basePath` |string |Filesystem path relative to wiki root |
+|`provider` |string |Optional: `"scattered-binaries"` if auto-registered by that plugin |
+|`subFolder` |string |Optional: subfolder within matched dirs (scattered-binaries only) |
+
+!! Artifact Fields Convention
+
+Derived data linked to a parent file tiddler. Used by cascade delete/rename.
+
+|!Field |!Value |!Description |
+|`_artifact_source` |parent tiddler title |Back-reference for cascade operations |
+|`_artifact_type` |`thumbnail` / `extraction` / `extraction-image` / `summary` |Type classification |
+
+!! URI Resolver (server-side library)
+
+`require("$:/plugins/rimir/file-upload/uri-resolver")`
+
+|!Method |!Description |
+|`resolve(uri)` |Maps canonical URI to absolute filesystem path |
+|`resolveSecure(uri)` |Resolves + verifies no path traversal. Returns `{filePath, location}` or null |
+|`getLocation(uri)` |Returns location config object for a URI, or null |
+|`isWritable(uri)` |Returns boolean |
+|`allLocations()` |Returns all registered location configs |
+|`buildUri(locationName, relativePath)` |Constructs a canonical URI |
+|`invalidate()` |Clears location cache (call after changing location tiddlers at runtime) |
+
 !! Widget: `<$file-dropzone>`
 
 |!Attribute |!Description |
 |`actions` |Action string executed on upload completion |
+|`location` |Target location name (default: `"files"`). Must be writable. |
 |`subfolder` |Optional subfolder override (bypasses built-in routing) |
 |`prop-*` |Extra fields passed through as action variables |
 
@@ -27,6 +61,7 @@ Action variables available in `actions`:
 |`<<content-hash>>` |Content hash (8-char hex) |
 |`<<canonical-uri>>` |Canonical URI of the uploaded file (e.g. `/files/images/photo.jpg`) |
 |`<<generated-uri>>` |Thumbnail URI if processor ran, empty otherwise |
+|`<<location>>` |Target location name |
 
 !! Server routes
 
@@ -36,12 +71,13 @@ Action variables available in `actions`:
 |`filename` |Original filename |
 |`type` |MIME type |
 |`content` |Base64-encoded file content |
-|`targetPath` |Computed target path under `/files/` |
+|`targetPath` |Relative path within the target location |
+|`location` |Target location name (default: `"files"`) |
 
 |!Status |!Meaning |
-|200 |Success — returns `{canonicalUri, filename, generatedUri?}` |
-|400 |Missing fields or invalid JSON |
-|403 |Path traversal detected |
+|200 |Success — returns `{canonicalUri, filename, location, generatedUri?}` |
+|400 |Missing fields, invalid JSON, or unknown location |
+|403 |Path traversal detected or location is read-only |
 |413 |Upload too large (>50MB JSON) |
 |415 |MIME type not in whitelist |
 
@@ -53,6 +89,7 @@ Action variables available in `actions`:
 
 |!Status |!Meaning |
 |200 |Success — returns `{newCanonicalUri}` |
+|403 |Location is read-only or path traversal |
 |404 |Source file not found |
 |409 |Target file already exists |
 
@@ -63,6 +100,7 @@ Action variables available in `actions`:
 
 |!Status |!Meaning |
 |200 |Success — returns `{deleted: true}` |
+|403 |Location is read-only or path traversal |
 |404 |File not found |
 
 !! Config tiddlers

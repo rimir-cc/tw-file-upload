@@ -3,6 +3,75 @@ modified: 20260305110602317
 title: $:/plugins/rimir/file-upload/settings
 type: text/vnd.tiddlywiki
 
+!! Locations
+
+<div class="rr-input-row">
+<span class="rr-muted">File storage locations. Files can be uploaded to writable locations and served from all locations. Changes require a server restart.</span>
+</div>
+
+<table class="rr-table">
+<tr><th>Name</th><th>URI Prefix</th><th>Base Path</th><th>Writable</th><th>Source</th><th></th></tr>
+<$list filter="[all[tiddlers+shadows]tag[$:/tags/rimir/file-upload/location]]">
+<$let locationConfig={{{ [all[current]get[text]jsonget[name]] }}} locationProvider={{{ [all[current]get[text]jsonget[provider]] }}} locationWritable={{{ [all[current]get[text]jsonget[writable]] }}}>
+<tr>
+<td><$text text={{{ [all[current]get[text]jsonget[name]] }}}/></td>
+<td><code><$text text={{{ [all[current]get[text]jsonget[uriPrefix]] }}}/></code></td>
+<td><code><$text text={{{ [all[current]get[text]jsonget[basePath]] }}}/></code></td>
+<td>
+<%if [<locationWritable>match[true]] %>
+<$button class="tc-btn-invisible" tooltip="Toggle writable">yes</$button>
+<%else%>
+<$button class="tc-btn-invisible" tooltip="Toggle writable">no</$button>
+<%endif%>
+</td>
+<td><$text text={{{ [<locationProvider>minlength[1]] ~[[built-in]] }}}/></td>
+<td>
+<%if [<locationProvider>minlength[1]] ~[<locationConfig>match[files]] %>
+<%else%>
+<$button class="tc-btn-invisible tc-btn-danger" tooltip="Remove location">
+<$action-deletetiddler $tiddler=<<currentTiddler>>/>
+&times;
+</$button>
+<%endif%>
+</td>
+</tr>
+</$let>
+</$list>
+</table>
+
+<details>
+<summary>Add location</summary>
+
+<div class="rr-input-row">
+Name: <$edit-text tiddler="$:/temp/file-upload/new-location" field="name" tag="input" class="rr-input" size="20" placeholder="my-assets"/>
+</div>
+
+<div class="rr-input-row">
+Base path <span class="rr-muted">(relative to wiki root)</span>: <$edit-text tiddler="$:/temp/file-upload/new-location" field="basePath" tag="input" class="rr-input" size="30" placeholder="tiddlers/my-project/assets"/>
+</div>
+
+<div class="rr-input-row">
+<$checkbox tiddler="$:/temp/file-upload/new-location" field="writable" checked="yes" unchecked="no" default="yes"> Writable</$checkbox>
+</div>
+
+<$let
+  locName={{{ [[$:/temp/file-upload/new-location]get[name]] }}}
+  locBasePath={{{ [[$:/temp/file-upload/new-location]get[basePath]] }}}
+  locWritable={{{ [[$:/temp/file-upload/new-location]get[writable]match[yes]then[true]else[false]] }}}
+  locTitle={{{ [[$:/config/rimir/file-upload/locations/]addsuffix<locName>] }}}
+>
+<$button class="rr-btn" disabled={{{ [<locName>minlength[1]] [<locBasePath>minlength[1]] +[count[]match[2]then[]else[disabled]] }}}>
+<$action-setfield $tiddler=<<locTitle>> tags="$:/tags/rimir/file-upload/location" type="application/json" text={{{ [[{"name":"]addsuffix<locName>addsuffix[","uriPrefix":"/]addsuffix<locName>addsuffix[/","writable":]addsuffix<locWritable>addsuffix[,"basePath":"]addsuffix<locBasePath>addsuffix["}]] }}}/>
+<$action-deletetiddler $tiddler="$:/temp/file-upload/new-location"/>
+Add location
+</$button>
+<span class="rr-muted"> Restart required after adding.</span>
+</$let>
+
+</details>
+
+---
+
 !! Thumbnails
 
 <div class="rr-input-row">
@@ -36,3 +105,26 @@ Resolution (max dimension): <$edit-text tiddler="$:/config/rimir/file-upload/thu
 <div class="rr-input-row">
 <$checkbox tiddler="$:/config/rimir/file-upload/global-dedup" field="text" checked="yes" unchecked="no" default="no"> Enable global content-hash deduplication <span class="rr-muted">(skip upload if identical file already exists)</span></$checkbox>
 </div>
+
+---
+
+!! Artifact Migration
+
+<div class="rr-input-row">
+<span class="rr-muted">One-time migration: add `_artifact_source` and `_artifact_type` fields to existing `.extracted` and `.summaries/*` tiddlers that were created before the artifact registry was introduced.</span>
+</div>
+
+<$button class="rr-btn">
+<$list filter="[has[extraction-source]!has[_artifact_source]]" variable="artTitle">
+<$let src={{{ [<artTitle>get[extraction-source]] }}}>
+<$action-setfield $tiddler=<<artTitle>> _artifact_source=<<src>> _artifact_type="extraction"/>
+</$let>
+</$list>
+<$list filter="[tag[llm-summary]has[parent]!has[_artifact_source]]" variable="artTitle">
+<$let src={{{ [<artTitle>get[parent]] }}}>
+<$action-setfield $tiddler=<<artTitle>> _artifact_source=<<src>> _artifact_type="summary"/>
+</$let>
+</$list>
+Migrate existing artifacts
+</$button>
+<span class="rr-muted"> Found: <$count filter="[has[extraction-source]!has[_artifact_source]]"/> extractions, <$count filter="[tag[llm-summary]has[parent]!has[_artifact_source]]"/> summaries without `_artifact_source`.</span>

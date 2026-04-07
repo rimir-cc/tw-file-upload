@@ -6,6 +6,7 @@ type: text/vnd.tiddlywiki
 ! Changelog
 
 |!Version |!Date |!Changes |
+|v0.1.8 |2026-04-07 |Location registry: multi-location support with writable/read-only flag, uri-resolver library, artifact cascade (delete/rename propagates to `_artifact_source` tiddlers), location management UI in settings, `location` attribute on `<$file-dropzone>`, `serve-location` route for user-created locations, optional integration with scattered-binaries and llm-connect |
 |v0.1.7 |2026-03-27 |Remove phantom file-paths filter from docs, deduplicate helpers in dropzone.js, bundle default media-types shadow tiddler |
 |v0.1.6 |2026-03-15 |Add null guards to th-saving-tiddler and th-renaming-tiddler hooks |
 |v0.1.5 |2026-03-15 |Add name field to plugin.info |

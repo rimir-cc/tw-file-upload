@@ -1,0 +1,5 @@
+title: $:/config/rimir/file-upload/locations/files
+tags: $:/tags/rimir/file-upload/location
+type: application/json
+
+{"name":"files","uriPrefix":"/files/","writable":true,"basePath":"files"}

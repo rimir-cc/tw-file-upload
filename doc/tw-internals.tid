@@ -3,7 +3,7 @@ modified: 20260315120000000
 rdt.order: 7
 rdt.plugin-key: file-upload
 rdt.plugin-name: file upload
-rdt.plugin-subtitle: Upload files to /files/ with rename, delete, thumbnails, and deduplication
+rdt.plugin-subtitle: Upload files to configurable locations with rename, delete, thumbnails, artifact cascade, and deduplication
 rdt.section: TW Internals
 title: $:/plugins/rimir/file-upload/doc/tw-internals
 type: text/vnd.tiddlywiki

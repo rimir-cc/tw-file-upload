@@ -3,7 +3,8 @@ title: $:/plugins/rimir/file-upload/routes/upload
 type: application/javascript
 module-type: route
 
-POST /api/file-upload — receive base64-encoded file, write to /files/<targetPath>.
+POST /api/file-upload — receive base64-encoded file, write to target location.
+Supports arbitrary writable locations via the location registry.
 Optionally runs post-upload processing (thumbnails etc.) via runner actions.
 
 \*/
@@ -14,8 +15,8 @@ var fs = require("fs");
 var path = require("path");
 var child_process = require("child_process");
 
+var resolver = require("$:/plugins/rimir/file-upload/uri-resolver");
 var logger = new $tw.utils.Logger("file-upload", {colour: "cyan"});
-var basePath = path.resolve($tw.boot.wikiPath, "files");
 
 exports.method = "POST";
 exports.path = /^\/api\/file-upload$/;
@@ -49,6 +50,7 @@ function handleUpload(data, response) {
 	var type = data.type || "";
 	var content = data.content;
 	var targetPath = data.targetPath;
+	var locationName = data.location || "files";
 	if(!filename || !content || !targetPath) {
 		sendJson(response, 400, {error: "Missing required fields: filename, content, targetPath"});
 		return;
@@ -59,7 +61,29 @@ function handleUpload(data, response) {
 		sendJson(response, 415, {error: "MIME type not allowed: " + type});
 		return;
 	}
+	// Find the target location
+	var locations = resolver.allLocations();
+	var targetLocation = null;
+	for(var i = 0; i < locations.length; i++) {
+		if(locations[i].name === locationName) {
+			targetLocation = locations[i];
+			break;
+		}
+	}
+	if(!targetLocation) {
+		sendJson(response, 400, {error: "Unknown location: " + locationName});
+		return;
+	}
+	if(!targetLocation.writable) {
+		sendJson(response, 403, {error: "Location is read-only: " + locationName});
+		return;
+	}
+	if(!targetLocation.basePath) {
+		sendJson(response, 400, {error: "Location has no basePath: " + locationName});
+		return;
+	}
 	// Resolve and security-check the target path
+	var basePath = path.resolve($tw.boot.wikiPath, targetLocation.basePath);
 	var resolved = path.resolve(basePath, targetPath);
 	if(path.relative(basePath, resolved).indexOf("..") === 0) {
 		sendJson(response, 403, {error: "Path traversal not allowed"});
@@ -74,10 +98,14 @@ function handleUpload(data, response) {
 			sendJson(response, 500, {error: "Failed to write file: " + err.message});
 			return;
 		}
-		var canonicalUri = "/files/" + targetPath.replace(/\\/g, "/");
-		var result = {canonicalUri: canonicalUri, filename: filename};
-		// Post-upload processing
-		runProcessor(type, resolved, canonicalUri, function(generatedUri) {
+		// Build canonical URI using the location's uriPrefix
+		var relPath = targetPath.replace(/\\/g, "/");
+		var prefix = targetLocation.uriPrefix;
+		if(prefix.charAt(prefix.length - 1) !== "/") prefix += "/";
+		var canonicalUri = prefix + relPath;
+		var result = {canonicalUri: canonicalUri, filename: filename, location: locationName};
+		// Post-upload processing (thumbnails)
+		runProcessor(type, resolved, canonicalUri, basePath, function(generatedUri) {
 			if(generatedUri) {
 				result.generatedUri = generatedUri;
 			}
@@ -117,14 +145,13 @@ function getProcessorRule(mimeType) {
 function getResolution() {
 	var tiddler = $tw.wiki.getTiddler("$:/config/rimir/file-upload/thumb-resolution");
 	var raw = (tiddler && tiddler.fields.text || "200").trim();
-	// If single number, convert to NxN for ImageMagick
 	if(/^\d+$/.test(raw)) {
 		return raw + "x" + raw;
 	}
 	return raw;
 }
 
-function runProcessor(mimeType, inputPath, canonicalUri, callback) {
+function runProcessor(mimeType, inputPath, canonicalUri, basePath, callback) {
 	var rule = getProcessorRule(mimeType);
 	if(!rule) {
 		callback(null);
@@ -167,9 +194,11 @@ function runProcessor(mimeType, inputPath, canonicalUri, callback) {
 			}
 			callback(null);
 		} else {
-			// Compute generated canonical URI
+			// Compute generated canonical URI relative to basePath
 			var relPath = path.relative(basePath, outputPath).replace(/\\/g, "/");
-			callback("/files/" + relPath);
+			// Use the same location prefix
+			var prefix = canonicalUri.substring(0, canonicalUri.indexOf("/", 1) + 1);
+			callback(prefix + relPath);
 		}
 	});
 }

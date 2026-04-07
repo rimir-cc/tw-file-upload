@@ -14,7 +14,9 @@ differs, a unique filename is generated (e.g. grafik-a3f2b1c0.png).
 Attributes:
   actions   — action string executed on completion. Variables available:
               data (raw JSON), type, filename, content-hash,
-              canonical-uri, generated-uri (thumbnail URI if processor ran)
+              canonical-uri, generated-uri (thumbnail URI if processor ran),
+              location (target location name)
+  location  — target location name (default: "files"). Must be writable.
   subfolder — optional override for target subfolder (overrides filter)
   prop-*    — extra fields passed through as action variables
 
@@ -45,6 +47,7 @@ FileDropZoneWidget.prototype.execute = function() {
 	};
 	this.properties = getPropertiesWithPrefix(this.attributes, "prop-");
 	this.subfolder = this.getAttribute("subfolder");
+	this.location = this.getAttribute("location", "files");
 	DropZoneWidget.prototype.execute.call(this);
 };
 
@@ -88,7 +91,8 @@ FileDropZoneWidget.prototype.readFileCallback = function(tiddlerFieldsArray) {
 			}
 		}
 		var targetPath = this.computeTargetPath(toImport);
-		var canonicalUri = "/files/" + sanitizePath(targetPath);
+		var uriPrefix = this.getLocationUriPrefix();
+		var canonicalUri = uriPrefix + sanitizePath(targetPath);
 		// Check for existing tiddler with same target path
 		var existingTitle = this.findTiddlerByCanonicalUri(canonicalUri);
 		if(existingTitle) {
@@ -101,7 +105,7 @@ FileDropZoneWidget.prototype.readFileCallback = function(tiddlerFieldsArray) {
 			}
 			// Different content — make filename unique by appending hash
 			targetPath = appendHashToPath(targetPath, contentHash);
-			canonicalUri = "/files/" + sanitizePath(targetPath);
+			canonicalUri = uriPrefix + sanitizePath(targetPath);
 			// Check again with the new unique path
 			var existingUnique = this.findTiddlerByCanonicalUri(canonicalUri);
 			if(existingUnique) {
@@ -114,19 +118,22 @@ FileDropZoneWidget.prototype.readFileCallback = function(tiddlerFieldsArray) {
 			targetPath: targetPath,
 			canonicalUri: canonicalUri,
 			contentHash: contentHash,
-			fileType: type
+			fileType: type,
+			location: this.location
 		};
 		uploads.push(uploadEntry);
 		var body = {
 			filename: toImport.title,
 			type: type,
 			content: toImport.text,
-			targetPath: targetPath
+			targetPath: targetPath,
+			location: this.location
 		};
 		this.performUpload(body, {
 			type: type,
 			filename: toImport.title,
-			"content-hash": contentHash
+			"content-hash": contentHash,
+			location: this.location
 		});
 	}
 	// Write batch result to temp tiddler (includes both uploaded and skipped)
@@ -236,6 +243,26 @@ FileDropZoneWidget.prototype.getAllowedTypes = function() {
 		}
 	}
 	return [];
+};
+
+FileDropZoneWidget.prototype.getLocationUriPrefix = function() {
+	var TAG = "$:/tags/rimir/file-upload/location";
+	var titles = this.wiki.filterTiddlers("[all[tiddlers+shadows]tag[" + TAG + "]]");
+	for(var i = 0; i < titles.length; i++) {
+		var tiddler = this.wiki.getTiddler(titles[i]);
+		if(!tiddler) continue;
+		try {
+			var config = JSON.parse(tiddler.fields.text);
+			if(config.name === this.location) {
+				var prefix = config.uriPrefix || "/files/";
+				if(prefix.charAt(prefix.length - 1) !== "/") prefix += "/";
+				return prefix;
+			}
+		} catch(e) {
+			// Skip invalid configs
+		}
+	}
+	return "/files/";
 };
 
 FileDropZoneWidget.prototype.computeTargetPath = function(tiddlerFields) {

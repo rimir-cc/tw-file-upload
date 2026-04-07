@@ -3,7 +3,7 @@ title: $:/plugins/rimir/file-upload/routes/delete
 type: application/javascript
 module-type: route
 
-POST /api/file-delete — delete a file from disk under /files/.
+POST /api/file-delete — delete a file from disk at any writable location.
 Also deletes matching files in _generated/ subdirectory.
 
 \*/
@@ -13,8 +13,8 @@ Also deletes matching files in _generated/ subdirectory.
 var fs = require("fs");
 var path = require("path");
 
+var resolver = require("$:/plugins/rimir/file-upload/uri-resolver");
 var logger = new $tw.utils.Logger("file-upload", {colour: "cyan"});
-var basePath = path.resolve($tw.boot.wikiPath, "files");
 
 exports.method = "POST";
 exports.path = /^\/api\/file-delete$/;
@@ -32,35 +32,36 @@ exports.handler = function(request, response, state) {
 		sendJson(response, 400, {error: "Missing required field: uri"});
 		return;
 	}
-	// Strip /files/ prefix
-	if(uri.indexOf("/files/") !== 0) {
-		sendJson(response, 400, {error: "URI must start with /files/"});
+	// Resolve URI securely
+	var result = resolver.resolveSecure(uri);
+	if(!result) {
+		sendJson(response, 403, {error: "Cannot resolve URI or path traversal denied: " + uri});
 		return;
 	}
-	var relPath = uri.substring(7);
-	var filePath = path.resolve(basePath, relPath);
-	// Security check
-	if(path.relative(basePath, filePath).indexOf("..") === 0) {
-		sendJson(response, 403, {error: "Path traversal not allowed"});
+	if(!result.location.writable) {
+		sendJson(response, 403, {error: "Location is read-only: " + result.location.name});
 		return;
 	}
 	// Check file exists
-	if(!fs.existsSync(filePath)) {
+	if(!fs.existsSync(result.filePath)) {
 		sendJson(response, 404, {error: "File not found: " + uri});
 		return;
 	}
 	// Delete the file
 	try {
-		fs.unlinkSync(filePath);
+		fs.unlinkSync(result.filePath);
 	} catch(e) {
 		logger.log("Delete failed: " + e.message);
 		sendJson(response, 500, {error: "Delete failed: " + e.message});
 		return;
 	}
 	// Delete matching _generated/ files
-	deleteGenerated(filePath);
+	deleteGenerated(result.filePath);
+	// Delete matching _derived/ directory (for multi-file extractions)
+	deleteDerived(result.filePath);
 	// Clean up empty parent directories
-	cleanEmptyDirs(path.dirname(filePath));
+	var baseDir = path.resolve($tw.boot.wikiPath, result.location.basePath);
+	cleanEmptyDirs(path.dirname(result.filePath), baseDir);
 	logger.log("Deleted: " + uri);
 	sendJson(response, 200, {deleted: true});
 };
@@ -89,8 +90,28 @@ function deleteGenerated(filePath) {
 	}
 }
 
-function cleanEmptyDirs(dirPath) {
-	while(dirPath !== basePath && dirPath.length > basePath.length) {
+function deleteDerived(filePath) {
+	// _derived/ directory for multi-file extraction artifacts
+	// Located in files/_derived/<source-filename>/
+	var filesBase = path.resolve($tw.boot.wikiPath, "files");
+	var parsed = path.parse(filePath);
+	var derivedDir = path.join(filesBase, "_derived", parsed.base);
+	if(!fs.existsSync(derivedDir)) {
+		return;
+	}
+	try {
+		var files = fs.readdirSync(derivedDir);
+		for(var i = 0; i < files.length; i++) {
+			fs.unlinkSync(path.join(derivedDir, files[i]));
+		}
+		fs.rmdirSync(derivedDir);
+	} catch(e) {
+		logger.log("Derived file delete error: " + e.message);
+	}
+}
+
+function cleanEmptyDirs(dirPath, stopAt) {
+	while(dirPath !== stopAt && dirPath.length > stopAt.length) {
 		try {
 			var entries = fs.readdirSync(dirPath);
 			if(entries.length === 0) {

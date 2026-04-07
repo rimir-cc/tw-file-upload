@@ -3,7 +3,7 @@ title: $:/plugins/rimir/file-upload/routes/rename
 type: application/javascript
 module-type: route
 
-POST /api/file-rename — rename a file on disk under /files/.
+POST /api/file-rename — rename a file on disk at any writable location.
 Also renames matching files in _generated/ subdirectory.
 
 \*/
@@ -13,8 +13,8 @@ Also renames matching files in _generated/ subdirectory.
 var fs = require("fs");
 var path = require("path");
 
+var resolver = require("$:/plugins/rimir/file-upload/uri-resolver");
 var logger = new $tw.utils.Logger("file-upload", {colour: "cyan"});
-var basePath = path.resolve($tw.boot.wikiPath, "files");
 
 exports.method = "POST";
 exports.path = /^\/api\/file-rename$/;
@@ -33,43 +33,49 @@ exports.handler = function(request, response, state) {
 		sendJson(response, 400, {error: "Missing required fields: oldUri, newUri"});
 		return;
 	}
-	// Strip /files/ prefix to get relative paths
-	var oldRel = stripFilesPrefix(oldUri);
-	var newRel = stripFilesPrefix(newUri);
-	if(oldRel === null || newRel === null) {
-		sendJson(response, 400, {error: "URIs must start with /files/"});
+	// Resolve both URIs securely
+	var oldResult = resolver.resolveSecure(oldUri);
+	var newResult = resolver.resolveSecure(newUri);
+	if(!oldResult) {
+		sendJson(response, 403, {error: "Cannot resolve old URI or path traversal denied"});
 		return;
 	}
-	var oldPath = path.resolve(basePath, oldRel);
-	var newPath = path.resolve(basePath, newRel);
-	// Security check: both must be inside /files/
-	if(isOutside(oldPath) || isOutside(newPath)) {
-		sendJson(response, 403, {error: "Path traversal not allowed"});
+	if(!newResult) {
+		sendJson(response, 403, {error: "Cannot resolve new URI or path traversal denied"});
+		return;
+	}
+	if(!oldResult.location.writable) {
+		sendJson(response, 403, {error: "Source location is read-only: " + oldResult.location.name});
+		return;
+	}
+	if(!newResult.location.writable) {
+		sendJson(response, 403, {error: "Target location is read-only: " + newResult.location.name});
 		return;
 	}
 	// Check source exists
-	if(!fs.existsSync(oldPath)) {
+	if(!fs.existsSync(oldResult.filePath)) {
 		sendJson(response, 404, {error: "Source file not found: " + oldUri});
 		return;
 	}
 	// Check target doesn't already exist
-	if(fs.existsSync(newPath)) {
+	if(fs.existsSync(newResult.filePath)) {
 		sendJson(response, 409, {error: "Target file already exists: " + newUri});
 		return;
 	}
 	// Create target directory and rename
-	$tw.utils.createDirectory(path.dirname(newPath));
+	$tw.utils.createDirectory(path.dirname(newResult.filePath));
 	try {
-		fs.renameSync(oldPath, newPath);
+		fs.renameSync(oldResult.filePath, newResult.filePath);
 	} catch(e) {
 		logger.log("Rename failed: " + e.message);
 		sendJson(response, 500, {error: "Rename failed: " + e.message});
 		return;
 	}
 	// Clean up empty parent directories of old path
-	cleanEmptyDirs(path.dirname(oldPath));
+	var oldBaseDir = path.resolve($tw.boot.wikiPath, oldResult.location.basePath);
+	cleanEmptyDirs(path.dirname(oldResult.filePath), oldBaseDir);
 	// Rename matching _generated/ files
-	renameGenerated(oldPath, newPath);
+	renameGenerated(oldResult.filePath, newResult.filePath);
 	logger.log("Renamed: " + oldUri + " -> " + newUri);
 	sendJson(response, 200, {newCanonicalUri: newUri});
 };
@@ -97,26 +103,17 @@ function renameGenerated(oldFilePath, newFilePath) {
 			}
 		}
 		// Clean up old _generated/ if empty
-		cleanEmptyDirs(oldGenDir);
+		var remaining = fs.readdirSync(oldGenDir);
+		if(remaining.length === 0) {
+			fs.rmdirSync(oldGenDir);
+		}
 	} catch(e) {
 		logger.log("Generated file rename error: " + e.message);
 	}
 }
 
-function stripFilesPrefix(uri) {
-	if(uri.indexOf("/files/") === 0) {
-		return uri.substring(7);
-	}
-	return null;
-}
-
-function isOutside(resolved) {
-	return path.relative(basePath, resolved).indexOf("..") === 0;
-}
-
-function cleanEmptyDirs(dirPath) {
-	// Walk up from dirPath toward basePath, removing empty directories
-	while(dirPath !== basePath && dirPath.length > basePath.length) {
+function cleanEmptyDirs(dirPath, stopAt) {
+	while(dirPath !== stopAt && dirPath.length > stopAt.length) {
 		try {
 			var entries = fs.readdirSync(dirPath);
 			if(entries.length === 0) {
