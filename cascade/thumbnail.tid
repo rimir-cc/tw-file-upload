@@ -1,8 +1,8 @@
 created: 20260305110602313
-list-before: $:/config/ViewTemplateBodyFilters/default
+list-before: $:/config/ViewTemplateBodyFilters/testcase
 modified: 20260305110602313
 tags: $:/tags/ViewTemplateBodyFilter
 title: $:/plugins/rimir/file-upload/cascade/thumbnail
 type: text/vnd.tiddlywiki
 
-[all[current]has[_thumbnail_uri]then{$:/config/rimir/file-upload/thumb-rendering}match[yes]then[$:/plugins/rimir/file-upload/body/thumbnail]]
+[has[_thumbnail_uri]then{$:/config/rimir/file-upload/thumb-rendering}match[yes]then[$:/plugins/rimir/file-upload/body/thumbnail]]

@@ -236,10 +236,10 @@ exports.startup = function() {
 	var _fileUriSnapshot = {};  // title → {uri, location} for all known file tiddlers
 	var _deleteDecisions = {};  // title → "skip" | "confirmed"
 
-	// Build initial snapshot of file tiddlers
+	// Build initial snapshot of file tiddlers (excludes drafts)
 	function rebuildSnapshot() {
 		_fileUriSnapshot = {};
-		var titles = $tw.wiki.filterTiddlers("[has[_canonical_uri]]");
+		var titles = $tw.wiki.filterTiddlers("[has[_canonical_uri]!has[draft.of]]");
 		for(var i = 0; i < titles.length; i++) {
 			var t = $tw.wiki.getTiddler(titles[i]);
 			if(t) {
@@ -256,6 +256,7 @@ exports.startup = function() {
 	// Layer 1: best-effort confirm via hook
 	$tw.hooks.addHook("th-deleting-tiddler", function(tiddler) {
 		if(!tiddler) return tiddler;
+		if(tiddler.fields["draft.of"]) return tiddler; // Skip drafts
 		var uri = tiddler.fields._canonical_uri;
 		if(!uri) return tiddler;
 		var location = getLocationForUri(uri);
@@ -282,9 +283,9 @@ exports.startup = function() {
 		var snapshotDirty = false;
 		$tw.utils.each(changes, function(change, title) {
 			if(!change.deleted) {
-				// Tiddler was added/modified — update snapshot
+				// Tiddler was added/modified — update snapshot (skip drafts)
 				var t = $tw.wiki.getTiddler(title);
-				if(t && t.fields._canonical_uri) {
+				if(t && t.fields._canonical_uri && !t.fields["draft.of"]) {
 					var loc = getLocationForUri(t.fields._canonical_uri);
 					if(loc) {
 						_fileUriSnapshot[title] = {uri: t.fields._canonical_uri, location: loc};
