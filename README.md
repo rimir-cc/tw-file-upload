@@ -14,6 +14,7 @@ Upload media files to configurable storage locations with automatic tiddler crea
 * **File rename** -- renaming a tiddler renames the physical file on writable locations, including `_generated/` thumbnails
 * **File delete** -- deleting a tiddler offers to delete the file on writable locations, including thumbnails
 * **Artifact cascade** -- deleting or renaming a file tiddler automatically cascades to all derived artifacts (extractions, summaries, etc.)
+* **EXIF extraction** -- auto-extract metadata (date, camera, GPS, dimensions, exposure) from uploaded images with configurable per-location field mapping
 * **Deduplication** -- optional global content-hash dedup skips identical uploads
 
 ## Optional integration
@@ -23,7 +24,7 @@ Upload media files to configurable storage locations with automatic tiddler crea
 
 ## Prerequisites
 
-* ImageMagick -- required for thumbnail generation (`magick` on PATH)
+* ImageMagick -- required for thumbnail generation and EXIF extraction (`magick` on PATH; on WSL use `magick.exe`)
 * Ghostscript -- additionally required for PDF thumbnails (`gswin64c` on Windows, `gs` on Linux)
 
 ## Quick start

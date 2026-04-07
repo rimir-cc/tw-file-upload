@@ -27,6 +27,7 @@ Upload media files to configurable storage locations and create tiddlers with `_
 * ''Rename'' &mdash; renaming a tiddler renames the file on writable locations (including `_generated/` thumbnails) and cascades to artifact tiddlers
 * ''Delete'' &mdash; deleting a tiddler offers to delete the file on writable locations and automatically cleans up all derived artifacts (extractions, summaries, etc.)
 * ''Artifact cascade'' &mdash; derived tiddlers tagged with `_artifact_source` are automatically renamed/deleted when the parent file tiddler changes
+* ''EXIF extraction'' &mdash; auto-extract metadata (date, camera, GPS location, dimensions, exposure settings) from uploaded images and write to tiddler fields via configurable field mapping (global + per-location overrides)
 * ''Deduplication'' &mdash; optional global content-hash dedup skips uploads of identical files
 * ''MIME whitelist'' &mdash; only allowed file types can be uploaded
 * ''Settings UI'' &mdash; location management, thumbnail config, and media types in ControlPanel &rarr; Settings &rarr; File Upload
