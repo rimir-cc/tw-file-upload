@@ -28,15 +28,27 @@ function sanitizePath(p) {
 	return p;
 }
 
-function computeFilePath(tiddlerFields, oldUri) {
+function computeFilePath(tiddlerFields, oldUri, locationPrefix) {
 	// Extract extension from old URI, derive new filename from tiddler title
 	var oldFilename = oldUri.substring(oldUri.lastIndexOf("/") + 1);
 	var extDot = oldFilename.lastIndexOf(".");
 	var ext = extDot >= 0 ? oldFilename.substring(extDot) : "";
-	// New filename = tiddler title + original extension (title may already have ext)
+	// Use last segment of title as new filename
 	var newTitle = tiddlerFields.title;
-	var filename = newTitle.toLowerCase().endsWith(ext.toLowerCase()) ? newTitle : newTitle + ext;
-	// Route by MIME type
+	var titleSlash = newTitle.lastIndexOf("/");
+	var newBasename = titleSlash >= 0 ? newTitle.substring(titleSlash + 1) : newTitle;
+	var filename = newBasename.toLowerCase().endsWith(ext.toLowerCase()) ? newBasename : newBasename + ext;
+	// Preserve directory from old URI when location prefix is known (rename)
+	if(locationPrefix) {
+		var prefix = locationPrefix;
+		if(prefix.charAt(prefix.length - 1) !== "/") prefix += "/";
+		var relPath = oldUri.indexOf(prefix) === 0 ? oldUri.substring(prefix.length) : oldUri;
+		var dirSlash = relPath.lastIndexOf("/");
+		if(dirSlash >= 0) {
+			return sanitizePath(relPath.substring(0, dirSlash + 1) + filename);
+		}
+	}
+	// Fallback: route by MIME type (initial uploads without location context)
 	var type = tiddlerFields.type || "";
 	var subfolder = getSubfolderForType(type);
 	if(subfolder) {

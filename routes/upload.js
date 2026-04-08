@@ -204,11 +204,11 @@ function runProcessor(mimeType, inputPath, canonicalUri, basePath, callback) {
 			}
 			callback(null);
 		} else {
-			// Compute generated canonical URI relative to basePath
-			var relPath = path.relative(basePath, outputPath).replace(/\\/g, "/");
-			// Use the same location prefix
-			var prefix = canonicalUri.substring(0, canonicalUri.indexOf("/", 1) + 1);
-			callback(prefix + relPath);
+			// Derive generated URI from canonical URI (same directory + _generated/)
+			var uriLastSlash = canonicalUri.lastIndexOf("/");
+			var uriDir = canonicalUri.substring(0, uriLastSlash);
+			var generatedUri = uriDir + "/_generated/" + parsed.name + "_thumb" + outputExt;
+			callback(generatedUri);
 		}
 	});
 }

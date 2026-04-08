@@ -156,7 +156,7 @@ exports.startup = function() {
 		var updates = {};
 		// For writable locations, rename the physical file
 		if(location.writable) {
-			var newPath = computeFilePath(newTiddler.fields, oldUri);
+			var newPath = computeFilePath(newTiddler.fields, oldUri, location.uriPrefix);
 			var newUri = location.uriPrefix + newPath;
 			if(location.uriPrefix.charAt(location.uriPrefix.length - 1) !== "/") {
 				newUri = location.uriPrefix + "/" + newPath;
@@ -197,7 +197,7 @@ exports.startup = function() {
 		}
 		var updates = {};
 		if(location.writable) {
-			var newPath = computeFilePath(newTiddler.fields, oldUri);
+			var newPath = computeFilePath(newTiddler.fields, oldUri, location.uriPrefix);
 			var newUri = location.uriPrefix + newPath;
 			if(location.uriPrefix.charAt(location.uriPrefix.length - 1) !== "/") {
 				newUri = location.uriPrefix + "/" + newPath;
