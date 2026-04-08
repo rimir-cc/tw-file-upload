@@ -6,6 +6,7 @@ type: text/vnd.tiddlywiki
 ! Changelog
 
 |!Version |!Date |!Changes |
+|0.1.13 |2026-04-08 |Add test coverage: uri-resolver, upload/delete/rename route validation, dropzone widget (44→100 jasmine specs) |
 |0.1.12 |2026-04-07 |Cleanup: replace \define with \function for thumb-state, replace hardcoded colors with palette variables |
 |v0.1.11 |2026-04-07 |Add `target-prefix` attribute to `<$file-dropzone>`: inserts path prefix between subfolder and filename on disk, exposed as variable in action string for tiddler title construction |
 |v0.1.10 |2026-04-07 |EXIF extraction: auto-extract metadata from uploaded images via ImageMagick and map to tiddler fields. Configurable global field mapping + per-location overrides. Extracts date, camera, dimensions, GPS, exposure, lens. Enabled by default. |
