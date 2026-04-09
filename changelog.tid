@@ -6,6 +6,7 @@ type: text/vnd.tiddlywiki
 ! Changelog
 
 |!Version |!Date |!Changes |
+|0.1.15 |2026-04-09 |file-pipeline integration: `<$file-dropzone>` auto-detects file-pipeline plugin and triggers `pipeline="auto"` on every upload. New `pipeline` attribute ("auto", "<name>", "none"). `upload.js` skips `runProcessor()` when file-pipeline installed. Settings UI shows "configure via file-pipeline" hint for thumbnail settings |
 |0.1.14 |2026-04-08 |Fix rename: preserve file directory on rename instead of re-routing by MIME type. Fix thumbnail URI: derive from canonical URI instead of guessing prefix. Use last title segment as filename on rename |
 |0.1.13 |2026-04-08 |Add test coverage: uri-resolver, upload/delete/rename route validation, dropzone widget (44→100 jasmine specs) |
 |0.1.12 |2026-04-07 |Cleanup: replace \define with \function for thumb-state, replace hardcoded colors with palette variables |

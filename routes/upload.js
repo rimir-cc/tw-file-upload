@@ -104,8 +104,10 @@ function handleUpload(data, response) {
 		if(prefix.charAt(prefix.length - 1) !== "/") prefix += "/";
 		var canonicalUri = prefix + relPath;
 		var result = {canonicalUri: canonicalUri, filename: filename, location: locationName};
-		// Post-upload processing (thumbnails + EXIF)
-		runProcessor(type, resolved, canonicalUri, basePath, function(generatedUri) {
+		// Skip thumbnails when file-pipeline is installed (it handles them)
+		var hasPipeline = false;
+		try { require("$:/plugins/rimir/file-pipeline/pipeline-executor"); hasPipeline = true; } catch(e) {}
+		var afterProcessor = function(generatedUri) {
 			if(generatedUri) {
 				result.generatedUri = generatedUri;
 			}
@@ -120,7 +122,12 @@ function handleUpload(data, response) {
 			} else {
 				sendJson(response, 200, result);
 			}
-		});
+		};
+		if(hasPipeline) {
+			afterProcessor(null);
+		} else {
+			runProcessor(type, resolved, canonicalUri, basePath, afterProcessor);
+		}
 	});
 }
 

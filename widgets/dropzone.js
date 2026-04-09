@@ -15,10 +15,12 @@ Attributes:
   actions       — action string executed on completion. Variables available:
                   data (raw JSON), type, filename, content-hash,
                   canonical-uri, generated-uri (thumbnail URI if processor ran),
-                  location (target location name), target-prefix (if set)
+                  location (target location name), target-prefix (if set),
+                  pipeline-results (JSON), extracted-text (if extraction ran)
   location      — target location name (default: "files"). Must be writable.
   subfolder     — optional override for target subfolder (overrides filter)
   target-prefix — path prefix inserted between subfolder and filename on disk
+  pipeline      — "auto" (match by MIME), pipeline name, or omitted (no pipeline)
   prop-*        — extra fields passed through as action variables
 
 \*/
@@ -50,6 +52,7 @@ FileDropZoneWidget.prototype.execute = function() {
 	this.subfolder = this.getAttribute("subfolder");
 	this.targetPrefix = this.getAttribute("target-prefix");
 	this.location = this.getAttribute("location", "files");
+	this.pipeline = this.getAttribute("pipeline");
 	DropZoneWidget.prototype.execute.call(this);
 };
 
@@ -197,6 +200,17 @@ FileDropZoneWidget.prototype.performUpload = function(body, vars) {
 			if(responseData && responseData.exif && responseData.canonicalUri) {
 				self.applyExifFields(responseData.canonicalUri, responseData.exif, vars.location || "files");
 			}
+			// Trigger pipeline: explicit attribute, or auto-detect file-pipeline plugin
+			var effectivePipeline = self.pipeline;
+			if(!effectivePipeline) {
+				try {
+					require("$:/plugins/rimir/file-pipeline/pipeline-client");
+					effectivePipeline = "auto";
+				} catch(e) { /* file-pipeline not installed */ }
+			}
+			if(effectivePipeline && effectivePipeline !== "none" && responseData && responseData.canonicalUri) {
+				self.triggerPipeline(effectivePipeline, responseData.canonicalUri, vars.type, vars.filename, variables);
+			}
 		}
 	});
 };
@@ -237,6 +251,45 @@ FileDropZoneWidget.prototype.applyExifFields = function(canonicalUri, exifData, 
 	if(hasUpdates) {
 		this.wiki.addTiddler(new $tw.Tiddler(tiddler, updates));
 	}
+};
+
+FileDropZoneWidget.prototype.triggerPipeline = function(pipelineName, canonicalUri, mimeType, filename, actionVars) {
+	var self = this;
+	var pipelineClient;
+	try {
+		pipelineClient = require("$:/plugins/rimir/file-pipeline/pipeline-client");
+	} catch(e) {
+		// file-pipeline plugin not installed — skip silently
+		return;
+	}
+	// Find the tiddler title by canonical URI (tiddler should exist by now from actions)
+	var sourceTitle = this.findTiddlerByCanonicalUri(canonicalUri);
+	if(!sourceTitle) return;
+	pipelineClient.runPipeline({
+		sourceTitle: sourceTitle,
+		uri: canonicalUri,
+		pipeline: pipelineName,
+		mimeType: mimeType,
+		filename: filename,
+		onComplete: function(results) {
+			// Re-invoke actions with pipeline results if there are any
+			if(results && results.length > 0 && self.actions) {
+				var pipelineVars = {};
+				for(var k in actionVars) { pipelineVars[k] = actionVars[k]; }
+				pipelineVars["pipeline-results"] = JSON.stringify(results);
+				// Find extracted text if any
+				for(var r = 0; r < results.length; r++) {
+					if(results[r].text && results[r].artifact && results[r].artifact.type === "extraction") {
+						pipelineVars["extracted-text"] = results[r].text;
+						break;
+					}
+				}
+			}
+		},
+		onError: function(err) {
+			console.warn("file-pipeline error:", err.message || err);
+		}
+	});
 };
 
 FileDropZoneWidget.prototype.notifySkipped = function(skippedArray) {

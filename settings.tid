@@ -74,6 +74,18 @@ Add location
 
 !! Thumbnails
 
+<$list filter="[[$:/plugins/rimir/file-pipeline]plugin-type[plugin]]" variable="ignore">
+<div class="rr-settings-info-card">
+Thumbnails and text extraction are managed by the ''file-pipeline'' plugin. Configure in <$button class="tc-btn-invisible tc-tiddlylink" style="padding:0">
+<$action-navigate $to="$:/plugins/rimir/file-pipeline"/>
+file-pipeline settings
+</$button>.
+</div>
+</$list>
+
+<$list filter="[[$:/plugins/rimir/file-pipeline]plugin-type[plugin]else[not-installed]]" variable="check">
+<$list filter="[<check>match[not-installed]]">
+
 <div class="rr-input-row">
 <$checkbox tiddler="$:/config/rimir/file-upload/thumb-images" field="text" checked="yes" unchecked="no" default="no"> Generate thumbnails for images</$checkbox>
 </div>
@@ -85,6 +97,9 @@ Add location
 <div class="rr-input-row">
 Resolution (max dimension): <$edit-text tiddler="$:/config/rimir/file-upload/thumb-resolution" tag="input" default="200" class="rr-input" size="10"/> <span class="rr-muted">e.g. `200` or `300x200`</span>
 </div>
+
+</$list>
+</$list>
 
 !! Rendering
 
