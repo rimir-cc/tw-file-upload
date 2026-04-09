@@ -265,12 +265,19 @@ FileDropZoneWidget.prototype.triggerPipeline = function(pipelineName, canonicalU
 	// Find the tiddler title by canonical URI (tiddler should exist by now from actions)
 	var sourceTitle = this.findTiddlerByCanonicalUri(canonicalUri);
 	if(!sourceTitle) return;
+	// Pass llm-* properties from dropzone to pipeline for LLM step overrides
+	var llmOptions = {};
+	if(self.properties["system-prompt"]) llmOptions.systemPrompt = self.properties["system-prompt"];
+	if(self.properties["provider"]) llmOptions.provider = self.properties["provider"];
+	if(self.properties["model"]) llmOptions.model = self.properties["model"];
+
 	pipelineClient.runPipeline({
 		sourceTitle: sourceTitle,
 		uri: canonicalUri,
 		pipeline: pipelineName,
 		mimeType: mimeType,
 		filename: filename,
+		llmOptions: llmOptions,
 		onComplete: function(results) {
 			// Re-invoke actions with pipeline results if there are any
 			if(results && results.length > 0 && self.actions) {
