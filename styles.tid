@@ -1,0 +1,61 @@
+title: $:/plugins/rimir/file-upload/styles
+tags: $:/tags/Stylesheet
+type: text/vnd.tiddlywiki
+
+/* Drag-over highlight: applied by core dropzone to the widget's DOM node */
+.tc-dropzone.tc-dragover > div {
+  border-color: <<colour primary>>;
+  background: rgba(0,0,0,0.03);
+}
+
+/* Upload/processing status overlay */
+.tc-dropzone.fu-uploading,
+.tc-dropzone.fu-processing {
+  position: relative;
+}
+
+.tc-dropzone.fu-uploading > div,
+.tc-dropzone.fu-processing > div {
+  opacity: 0.5;
+}
+
+.tc-dropzone.fu-uploading::after,
+.tc-dropzone.fu-processing::after {
+  content: attr(data-fu-status);
+  display: block;
+  text-align: center;
+  padding: 8px;
+  font-size: 0.85em;
+  color: <<colour foreground>>;
+  animation: fu-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes fu-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Full-screen busy overlay — blocks interaction during upload/pipeline */
+.fu-busy-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 9600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fu-busy-spinner {
+  background: <<colour tiddler-background>>;
+  padding: 24px 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.fu-busy-text {
+  font-size: 1.1em;
+  color: <<colour foreground>>;
+  animation: fu-pulse 1.5s ease-in-out infinite;
+}

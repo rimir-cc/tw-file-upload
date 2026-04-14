@@ -59,19 +59,102 @@ FileDropZoneWidget.prototype.execute = function() {
 FileDropZoneWidget.prototype.handleDropEvent = function(event) {
 	var self = this,
 		dataTransfer = event.dataTransfer;
-	var readFileCallback = function(tiddlerFieldsArray) {
-		self.readFileCallback(tiddlerFieldsArray);
-	};
 	self.leaveDrag(event);
 	self.resetState();
 	if(dataTransfer.files && !$tw.utils.dragEventContainsType(event, "text/vnd.tiddler")) {
-		this.wiki.readFiles(dataTransfer.files, {
-			callback: readFileCallback,
-			deserializer: this.dropzoneDeserializer
-		});
+		self.processFiles(dataTransfer.files);
 	}
 	event.preventDefault();
 	event.stopPropagation();
+};
+
+/*
+Process dropped files: compute hash from a small slice, check dedup, upload binary.
+Bypasses wiki.readFiles() to avoid reading entire files as base64.
+*/
+FileDropZoneWidget.prototype.processFiles = function(fileList) {
+	var self = this;
+	var allowedTypes = this.getAllowedTypes();
+	var globalDedup = this.isGlobalDedupEnabled();
+	var uploads = [];
+	var skipped = [];
+	var pending = fileList.length;
+
+	function onFileDone() {
+		pending--;
+		if(pending <= 0) {
+			self.wiki.addTiddler(new $tw.Tiddler({
+				title: "$:/temp/file-upload/last-upload",
+				type: "application/json",
+				text: JSON.stringify({uploads: uploads, skipped: skipped})
+			}));
+			if(skipped.length > 0) {
+				self.notifySkipped(skipped);
+			}
+		}
+	}
+
+	for(var i = 0; i < fileList.length; i++) {
+		(function(file) {
+			var type = file.type || "";
+			var filename = file.name || "unnamed";
+			if(allowedTypes.indexOf(type) === -1) {
+				pending--;
+				return;
+			}
+			// Hash from first 1024 bytes
+			computeHashFromFile(file, function(contentHash) {
+				if(globalDedup) {
+					var globalMatch = self.findTiddlerByContentHash(contentHash);
+					if(globalMatch) {
+						skipped.push({filename: filename, existingTitle: globalMatch});
+						onFileDone();
+						return;
+					}
+				}
+				var tiddlerFields = {title: filename, type: type};
+				var targetPath = self.computeTargetPath(tiddlerFields);
+				var uriPrefix = self.getLocationUriPrefix();
+				var canonicalUri = uriPrefix + sanitizePath(targetPath);
+				var existingTitle = self.findTiddlerByCanonicalUri(canonicalUri);
+				if(existingTitle) {
+					var existingTiddler = self.wiki.getTiddler(existingTitle);
+					var existingHash = existingTiddler ? existingTiddler.fields._content_hash : null;
+					if(existingHash === contentHash) {
+						skipped.push({filename: filename, existingTitle: existingTitle});
+						onFileDone();
+						return;
+					}
+					targetPath = appendHashToPath(targetPath, contentHash);
+					canonicalUri = uriPrefix + sanitizePath(targetPath);
+					var existingUnique = self.findTiddlerByCanonicalUri(canonicalUri);
+					if(existingUnique) {
+						skipped.push({filename: filename, existingTitle: existingUnique});
+						onFileDone();
+						return;
+					}
+				}
+				uploads.push({
+					filename: filename,
+					targetPath: targetPath,
+					canonicalUri: canonicalUri,
+					contentHash: contentHash,
+					fileType: type,
+					location: self.location
+				});
+				var vars = {
+					type: type,
+					filename: filename,
+					"content-hash": contentHash,
+					location: self.location
+				};
+				if(self.targetPrefix) {
+					vars["target-prefix"] = self.targetPrefix;
+				}
+				self.performBinaryUpload(file, targetPath, vars, onFileDone);
+			});
+		})(fileList[i]);
+	}
 };
 
 FileDropZoneWidget.prototype.readFileCallback = function(tiddlerFieldsArray) {
@@ -265,6 +348,9 @@ FileDropZoneWidget.prototype.triggerPipeline = function(pipelineName, canonicalU
 	// Find the tiddler title by canonical URI (tiddler should exist by now from actions)
 	var sourceTitle = this.findTiddlerByCanonicalUri(canonicalUri);
 	if(!sourceTitle) return;
+	self.domNodes[0].setAttribute("data-fu-status", "Processing " + (filename || "") + "...");
+	$tw.utils.addClass(self.domNodes[0], "fu-processing");
+	$tw.wiki.addTiddler(new $tw.Tiddler({title: "$:/state/rimir/file-upload/busy", text: "Processing " + (filename || "") + "..."}));
 	// Pass llm-* properties from dropzone to pipeline for LLM step overrides
 	var llmOptions = {};
 	if(self.properties["system-prompt"]) llmOptions.systemPrompt = self.properties["system-prompt"];
@@ -278,6 +364,12 @@ FileDropZoneWidget.prototype.triggerPipeline = function(pipelineName, canonicalU
 		mimeType: mimeType,
 		filename: filename,
 		llmOptions: llmOptions,
+		onServerDone: function() {
+			// Server-side processing done — remove busy indicator
+			$tw.utils.removeClass(self.domNodes[0], "fu-processing");
+			self.domNodes[0].removeAttribute("data-fu-status");
+			$tw.wiki.deleteTiddler("$:/state/rimir/file-upload/busy");
+		},
 		onComplete: function(results) {
 			// Re-invoke actions with pipeline results if there are any
 			if(results && results.length > 0 && self.actions) {
@@ -294,9 +386,89 @@ FileDropZoneWidget.prototype.triggerPipeline = function(pipelineName, canonicalU
 			}
 		},
 		onError: function(err) {
+			$tw.utils.removeClass(self.domNodes[0], "fu-processing");
+			self.domNodes[0].removeAttribute("data-fu-status");
+			$tw.wiki.deleteTiddler("$:/state/rimir/file-upload/busy");
 			console.warn("file-pipeline error:", err.message || err);
 		}
 	});
+};
+
+/*
+Upload a file as raw binary via /api/file-upload-binary.
+No base64 encoding, no JSON wrapping — streams the File directly.
+*/
+FileDropZoneWidget.prototype.performBinaryUpload = function(file, targetPath, vars, onDone) {
+	var self = this;
+	// Visual feedback: mark dropzone as busy + show overlay
+	self.domNodes[0].setAttribute("data-fu-status", "Uploading " + (vars.filename || "") + "...");
+	$tw.utils.addClass(self.domNodes[0], "fu-uploading");
+	$tw.wiki.addTiddler(new $tw.Tiddler({title: "$:/state/rimir/file-upload/busy", text: "Uploading " + (vars.filename || "") + "..."}));
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", "/api/file-upload-binary");
+	xhr.setRequestHeader("x-requested-with", "TiddlyWiki");
+	xhr.setRequestHeader("x-upload-filename", encodeURIComponent(vars.filename));
+	xhr.setRequestHeader("x-upload-type", vars.type);
+	xhr.setRequestHeader("x-upload-path", encodeURIComponent(targetPath));
+	xhr.setRequestHeader("x-upload-location", vars.location);
+	xhr.upload.onprogress = function(e) {
+		if(e.lengthComputable) {
+			var pct = Math.round(e.loaded / e.total * 100);
+			var msg = "Uploading " + (vars.filename || "") + " (" + pct + "%)...";
+			self.domNodes[0].setAttribute("data-fu-status", msg);
+			$tw.wiki.addTiddler(new $tw.Tiddler({title: "$:/state/rimir/file-upload/busy", text: msg}));
+		}
+	};
+	xhr.onload = function() {
+		$tw.utils.removeClass(self.domNodes[0], "fu-uploading");
+		var responseData;
+		try {
+			responseData = JSON.parse(xhr.responseText);
+		} catch(e) {
+			responseData = {};
+		}
+		var variables = {};
+		for(var key in vars) {
+			variables[key] = vars[key];
+		}
+		for(var pkey in self.properties) {
+			variables[pkey] = self.properties[pkey];
+		}
+		variables.data = xhr.responseText;
+		if(responseData.canonicalUri) {
+			variables["canonical-uri"] = responseData.canonicalUri;
+		}
+		if(responseData.generatedUri) {
+			variables["generated-uri"] = responseData.generatedUri;
+		}
+		if(self.actions) {
+			self.invokeActionString(self.actions, self, null, variables);
+		}
+		if(responseData.exif && responseData.canonicalUri) {
+			self.applyExifFields(responseData.canonicalUri, responseData.exif, vars.location || "files");
+		}
+		// Trigger pipeline (deferred to avoid blocking UI)
+		var effectivePipeline = self.pipeline;
+		if(!effectivePipeline) {
+			try {
+				require("$:/plugins/rimir/file-pipeline/pipeline-client");
+				effectivePipeline = "auto";
+			} catch(e) {}
+		}
+		if(effectivePipeline && effectivePipeline !== "none" && responseData.canonicalUri) {
+			setTimeout(function() {
+				self.triggerPipeline(effectivePipeline, responseData.canonicalUri, vars.type, vars.filename, variables);
+			}, 0);
+		}
+		if(onDone) onDone();
+	};
+	xhr.onerror = function() {
+		$tw.utils.removeClass(self.domNodes[0], "fu-uploading");
+		self.domNodes[0].removeAttribute("data-fu-status");
+		$tw.wiki.deleteTiddler("$:/state/rimir/file-upload/busy");
+		if(onDone) onDone();
+	};
+	xhr.send(file);
 };
 
 FileDropZoneWidget.prototype.notifySkipped = function(skippedArray) {
@@ -390,6 +562,24 @@ FileDropZoneWidget.prototype.computeTargetPath = function(tiddlerFields) {
 	}
 	return prefix + tiddlerFields.title;
 };
+
+// Hash from first 1024 bytes of a File object (async via FileReader)
+function computeHashFromFile(file, callback) {
+	var slice = file.slice(0, 1024);
+	var reader = new FileReader();
+	reader.onload = function() {
+		var arr = new Uint8Array(reader.result);
+		var hash = 5381;
+		for(var i = 0; i < arr.length; i++) {
+			hash = ((hash << 5) + hash + arr[i]) & 0xFFFFFFFF;
+		}
+		callback((hash >>> 0).toString(16).padStart(8, "0"));
+	};
+	reader.onerror = function() {
+		callback("00000000");
+	};
+	reader.readAsArrayBuffer(slice);
+}
 
 // Simple hash: djb2 on the first 1024 chars of base64, returned as 8-char hex
 function computeHash(base64Content) {

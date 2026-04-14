@@ -232,7 +232,7 @@ Returns a flat object with EXIF tag names as keys via callback.
 */
 function extractExif(filePath, callback) {
 	// Use magick identify with JSON output for reliable parsing
-	var command = 'magick.exe identify -format "' +
+	var command = 'magick identify -format "' +
 		'%[EXIF:DateTimeOriginal]||' +
 		'%[EXIF:Make]||' +
 		'%[EXIF:Model]||' +

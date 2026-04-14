@@ -17,6 +17,9 @@ function getSubfolderForType(mimeType) {
 	if(mimeType === "application/pdf") {
 		return "pdf";
 	}
+	if(mimeType.indexOf("video/") === 0) {
+		return "videos";
+	}
 	return "";
 }
 

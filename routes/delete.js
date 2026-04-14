@@ -92,10 +92,9 @@ function deleteGenerated(filePath) {
 
 function deleteDerived(filePath) {
 	// _derived/ directory for multi-file extraction artifacts
-	// Located in files/_derived/<source-filename>/
-	var filesBase = path.resolve($tw.boot.wikiPath, "files");
+	// Located in <parent-dir>/_derived/<source-filename>/
 	var parsed = path.parse(filePath);
-	var derivedDir = path.join(filesBase, "_derived", parsed.base);
+	var derivedDir = path.join(parsed.dir, "_derived", parsed.base);
 	if(!fs.existsSync(derivedDir)) {
 		return;
 	}
@@ -105,6 +104,12 @@ function deleteDerived(filePath) {
 			fs.unlinkSync(path.join(derivedDir, files[i]));
 		}
 		fs.rmdirSync(derivedDir);
+		// Clean up _derived/ parent if now empty
+		var derivedParent = path.join(parsed.dir, "_derived");
+		var remaining = fs.readdirSync(derivedParent);
+		if(remaining.length === 0) {
+			fs.rmdirSync(derivedParent);
+		}
 	} catch(e) {
 		logger.log("Derived file delete error: " + e.message);
 	}

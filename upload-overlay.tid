@@ -1,0 +1,12 @@
+title: $:/plugins/rimir/file-upload/upload-overlay
+tags: $:/tags/PageTemplate
+type: text/vnd.tiddlywiki
+
+\whitespace trim
+<$reveal state="$:/state/rimir/file-upload/busy" type="nomatch" text="" default="">
+<div class="fu-busy-overlay">
+<div class="fu-busy-spinner">
+<div class="fu-busy-text"><$text text={{$:/state/rimir/file-upload/busy}}/></div>
+</div>
+</div>
+</$reveal>
