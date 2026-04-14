@@ -1,0 +1,47 @@
+created: 20260414120000000
+modified: 20260414120000000
+title: $:/plugins/rimir/file-upload/templates/video-player
+type: text/vnd.tiddlywiki
+
+\procedure fu-render-video-player()
+<$let
+  qualityState={{{ [<currentTiddler>addprefix[$:/state/file-upload/video-quality/]] }}}
+  originalUri={{{ [<currentTiddler>get[_canonical_uri]] }}}
+  posterUri={{{ [<currentTiddler>get[_thumbnail_uri]] }}}
+  storedChoice={{{ [<qualityState>get[text]] }}}
+  defaultVariant={{{ [_artifact_source<currentTiddler>_artifact_type[downscale]sort[title]first[]] }}}
+  effectiveChoice={{{ [<storedChoice>!is[blank]] ~[<defaultVariant>!is[blank]] ~[[original]] }}}
+  playUri={{{ [<effectiveChoice>match[original]then<originalUri>] ~[<effectiveChoice>get[_canonical_uri]] ~[<originalUri>] }}}
+  hasDownscales={{{ [_artifact_source<currentTiddler>_artifact_type[downscale]limit[1]] }}}
+>
+<div class="fu-video-player-container">
+<div class="fu-video-resize-wrapper">
+<$list filter="[<playUri>]" variable="src">
+<video class="fu-video-player" controls preload="metadata" poster=<<posterUri>>>
+<source src=<<src>>/>
+</video>
+</$list>
+</div>
+<%if [<hasDownscales>!is[blank]] %>
+<div class="fu-video-quality-bar">
+<$list filter="[_artifact_source<currentTiddler>_artifact_type[downscale]sort[title]]" variable="variant">
+<$let
+  variantFile={{{ [<variant>get[_canonical_uri]split[/]last[]] ~[<variant>split[/]last[]] }}}
+  dimLabel={{{ [<variantFile>removesuffix[.mp4]removesuffix[.webm]removesuffix[.ogg]split[_]last[]addsuffix[p]] ~[[Scaled]] }}}
+  isActive={{{ [<effectiveChoice>match<variant>then[fu-quality-active]] }}}
+>
+<$button class={{{ [[fu-quality-btn ]addsuffix<isActive>] }}} set=<<qualityState>> setTo=<<variant>>>
+<$text text=<<dimLabel>>/>
+</$button>
+</$let>
+</$list>
+<$let isActive={{{ [<effectiveChoice>match[original]then[fu-quality-active]] }}}>
+<$button class={{{ [[fu-quality-btn ]addsuffix<isActive>] }}} set=<<qualityState>> setTo="original">
+Original
+</$button>
+</$let>
+</div>
+<%endif%>
+</div>
+</$let>
+\end

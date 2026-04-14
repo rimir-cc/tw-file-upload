@@ -59,3 +59,108 @@ type: text/vnd.tiddlywiki
   color: <<colour foreground>>;
   animation: fu-pulse 1.5s ease-in-out infinite;
 }
+
+/* Video player */
+.fu-video-player-container {
+  width: 100%;
+}
+
+.fu-video-wrapper {
+  max-width: 900px;
+}
+
+.fu-video-resize-wrapper {
+  resize: both;
+  overflow: hidden;
+  max-width: 100%;
+  min-width: 200px;
+  min-height: 150px;
+  border: 1px solid transparent;
+}
+
+.fu-video-resize-wrapper:hover {
+  border-color: <<colour tiddler-border>>;
+}
+
+.fu-video-player {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  border-radius: 4px;
+  display: block;
+}
+
+.fu-video-quality-bar {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.fu-quality-btn {
+  padding: 2px 10px;
+  border: 1px solid <<colour tiddler-border>>;
+  border-radius: 3px;
+  background: <<colour tiddler-background>>;
+  color: <<colour foreground>>;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.fu-quality-btn:hover {
+  background: <<colour tiddler-info-background>>;
+}
+
+.fu-quality-btn.fu-quality-active {
+  background: <<colour primary>>;
+  color: <<colour background>>;
+  border-color: <<colour primary>>;
+}
+
+/* Video thumbnail body (click-to-play) */
+.fu-video-thumb-wrapper {
+  max-width: 600px;
+}
+
+.fu-video-play-btn {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.fu-video-thumb-img {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  display: block;
+}
+
+.fu-video-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 4px;
+}
+
+.fu-video-play-btn:hover .fu-video-play-icon {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.fu-back-btn {
+  margin-top: 6px;
+}

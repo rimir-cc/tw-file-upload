@@ -1,0 +1,31 @@
+created: 20260414120000000
+modified: 20260414120000000
+title: $:/plugins/rimir/file-upload/body/video
+type: text/vnd.tiddlywiki
+
+\import [[$:/plugins/rimir/file-upload/templates/video-player]]
+\function video-view-state() [<currentTiddler>addprefix[$:/state/file-upload/video-view/]]
+
+<$reveal type="match" state=<<video-view-state>> text="player" tag="div">
+<div class="fu-video-wrapper">
+<<fu-render-video-player>>
+<$button class="fu-quality-btn fu-back-btn" set=<<video-view-state>> setTo="">
+Back to thumbnail
+</$button>
+</div>
+</$reveal>
+
+<$reveal type="nomatch" state=<<video-view-state>> text="player" tag="div">
+<%if [<currentTiddler>has[_thumbnail_uri]] %>
+<div class="fu-video-thumb-wrapper">
+<$button class="fu-video-play-btn" set=<<video-view-state>> setTo="player">
+<img class="fu-video-thumb-img" src={{!!_thumbnail_uri}}/>
+<div class="fu-video-play-icon">&#9654;</div>
+</$button>
+</div>
+<%else%>
+<div class="fu-video-wrapper">
+<<fu-render-video-player>>
+</div>
+<%endif%>
+</$reveal>

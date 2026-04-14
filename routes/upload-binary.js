@@ -95,12 +95,21 @@ exports.handler = function(request, response, state) {
 		var canonicalUri = prefix + relPath;
 		var result = {canonicalUri: canonicalUri, filename: filename, location: locationName};
 
-		// EXIF extraction for images (reuse logic from upload.js)
-		if(isExifEnabled() && type.indexOf("image/") === 0) {
-			extractExif(resolved, function(exif) {
-				if(exif) result.exif = exif;
+		// Metadata extraction
+		if(isExifEnabled()) {
+			if(type.indexOf("image/") === 0) {
+				extractExif(resolved, function(exif) {
+					if(exif) result.exif = exif;
+					sendJson(response, 200, result);
+				});
+			} else if(type.indexOf("video/") === 0) {
+				extractVideoMeta(resolved, function(exif) {
+					if(exif) result.exif = exif;
+					sendJson(response, 200, result);
+				});
+			} else {
 				sendJson(response, 200, result);
-			});
+			}
 		} else {
 			sendJson(response, 200, result);
 		}
@@ -170,6 +179,62 @@ function extractExif(filePath, callback) {
 		if(!exif.ExifImageHeight && exif.PixelHeight) exif.ExifImageHeight = exif.PixelHeight;
 		delete exif.PixelWidth;
 		delete exif.PixelHeight;
+		callback(Object.keys(exif).length > 0 ? exif : null);
+	});
+}
+
+function extractVideoMeta(filePath, callback) {
+	var child_process = require("child_process");
+	var command = 'ffprobe -v quiet -print_format json -show_format -show_streams "' + filePath + '"';
+	child_process.exec(command, {timeout: 15000}, function(err, stdout) {
+		if(err) { callback(null); return; }
+		var info;
+		try { info = JSON.parse(stdout); } catch(e) { callback(null); return; }
+		var fmt = info.format || {};
+		var tags = fmt.tags || {};
+		var exif = {};
+		// Creation date
+		var dateVal = tags.creation_time || tags.date || "";
+		if(dateVal) {
+			// Convert ISO to EXIF format: "2026:04:12 10:06:33"
+			var d = dateVal.replace(/T/, " ").replace(/Z$/, "").replace(/-/g, ":");
+			exif.DateTimeOriginal = d;
+		}
+		// Dimensions and duration from video stream
+		var streams = info.streams || [];
+		for(var i = 0; i < streams.length; i++) {
+			if(streams[i].codec_type === "video") {
+				var vs = streams[i];
+				exif.ExifImageWidth = String(vs.width || "");
+				exif.ExifImageHeight = String(vs.height || "");
+				if(vs.duration) exif.Duration = String(Math.round(parseFloat(vs.duration))) + "s";
+				if(vs.r_frame_rate) {
+					var fps = vs.r_frame_rate.split("/");
+					if(fps.length === 2 && parseInt(fps[1]) > 0) {
+						exif.FrameRate = String(Math.round(parseInt(fps[0]) / parseInt(fps[1])));
+					}
+				}
+				if(vs.codec_name) exif.VideoCodec = vs.codec_name;
+				break;
+			}
+		}
+		// GPS from format tags (Samsung, Apple, etc.)
+		var loc = tags.location || tags["location-eng"] || tags["com.apple.quicktime.location.ISO6709"] || "";
+		if(loc) {
+			// Format: "+51.0123+013.8051/" or "+51.0123-013.8051/"
+			var gps = loc.match(/([+-]\d+\.?\d*?)([+-]\d+\.?\d*)/);
+			if(gps) {
+				exif.GPSLatitudeDecimal = gps[1];
+				exif.GPSLongitudeDecimal = gps[2];
+			}
+		}
+		// Device info
+		if(tags["com.android.manufacturer"] || tags.make) exif.Make = tags["com.android.manufacturer"] || tags.make;
+		if(tags["com.android.model"] || tags.model) exif.Model = tags["com.android.model"] || tags.model;
+		// Clean empty values
+		for(var key in exif) {
+			if(!exif[key] || exif[key] === "undefined") delete exif[key];
+		}
 		callback(Object.keys(exif).length > 0 ? exif : null);
 	});
 }

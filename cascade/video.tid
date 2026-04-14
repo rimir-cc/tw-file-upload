@@ -1,0 +1,8 @@
+created: 20260414120000000
+list-before: $:/plugins/rimir/file-upload/cascade/thumbnail
+modified: 20260414120000000
+tags: $:/tags/ViewTemplateBodyFilter
+title: $:/plugins/rimir/file-upload/cascade/video
+type: text/vnd.tiddlywiki
+
+[get[type]prefix[video/]then[$:/plugins/rimir/file-upload/body/video]]
