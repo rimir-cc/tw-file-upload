@@ -24,7 +24,7 @@ Upload media files to configurable storage locations with automatic tiddler crea
 
 ## Prerequisites
 
-* ImageMagick -- required for thumbnail generation and EXIF extraction (`magick` on PATH; on WSL use `magick.exe`)
+* ImageMagick -- required for thumbnail generation and EXIF extraction (`magick` on PATH)
 * Ghostscript -- additionally required for PDF thumbnails (`gswin64c` on Windows, `gs` on Linux)
 
 ## Quick start

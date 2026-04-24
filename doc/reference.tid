@@ -120,7 +120,7 @@ Action variables available in `actions`:
 
 !! EXIF extraction
 
-When enabled, EXIF metadata is extracted from uploaded images via `magick.exe identify` and auto-applied as tiddler fields based on the field mapping config.
+When enabled, EXIF metadata is extracted from uploaded images via `magick identify` and auto-applied as tiddler fields based on the field mapping config.
 
 Available EXIF tags: `DateTimeOriginal`, `Make`, `Model`, `ExifImageWidth`, `ExifImageHeight`, `GPSLatitudeDecimal`, `GPSLongitudeDecimal`, `Orientation`, `ExposureTime`, `FNumber`, `ISO`, `FocalLength`, `LensModel`.
 
