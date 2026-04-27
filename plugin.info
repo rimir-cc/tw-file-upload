@@ -3,10 +3,14 @@
     "description": "Upload files to configurable locations with rename, delete, thumbnails, artifact cascade, and deduplication",
     "name": "file upload",
     "author": "rimir",
-    "version": "0.1.18",
+    "version": "0.1.19",
     "core-version": ">=5.3.0",
     "source": "https://github.com/rimir-cc/tw-file-upload",
     "plugin-type": "plugin",
     "list": "readme documentation settings test changelog license",
-    "dependents": "$:/plugins/rimir/theme"
+    "dependents": "$:/plugins/rimir/theme",
+    "soft-dependents": [
+        "$:/plugins/rimir/doc-template",
+        "$:/plugins/rimir/file-pipeline"
+    ]
 }

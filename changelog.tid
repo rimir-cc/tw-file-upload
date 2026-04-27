@@ -6,6 +6,7 @@ type: text/vnd.tiddlywiki
 ! Changelog
 
 |!Version |!Date |!Changes |
+|0.1.19 |2026-04-27 |Declare soft-dependents `doc-template`, `file-pipeline` in plugin.info |
 |0.1.18 |2026-04-14 |Video body template: inline `<video>` player with thumbnail-first cascade, quality selector (defaults to smallest downscale), resizable wrapper. Shared `fu-render-video-player` procedure. Video metadata extraction via `ffprobe` (date, GPS, dimensions, duration, codec, device). Video EXIF field mapping |
 |0.1.17 |2026-04-14 |Binary upload route (`/api/file-upload-binary`): streams raw file to disk, no base64/size limit. Upload progress overlay with percentage. Drag-over highlight CSS. Video subfolder routing (`video/*` → `videos/`). Fix `deleteDerived` for non-default locations + clean empty `_derived/` parent. Replace `magick.exe` with `magick` (native WSL) |
 |0.1.16 |2026-04-09 |Pass dropzone `prop-system-prompt`, `prop-provider`, `prop-model` to pipeline client for LLM step overrides |
