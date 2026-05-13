@@ -121,4 +121,60 @@ describe("file-upload: rename route", function() {
 		expect(renameRoute.method).toBe("POST");
 		expect(renameRoute.path.test("/api/file-rename")).toBe(true);
 	});
+
+	describe("renameDerived: _derived/<basename>/ directory follows parent rename", function() {
+		var fs = require("fs");
+		var path = require("path");
+		var os = require("os");
+
+		var tmpBase, oldFilePath, newFilePath, oldDerivedDir, newDerivedDir;
+
+		beforeEach(function() {
+			// Self-contained fixture in os.tmpdir() so we don't pollute
+			// test-edition/files/ between runs (see tw-test-fixture-pollution memory).
+			tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), "fu-rename-derived-"));
+			oldFilePath = path.join(tmpBase, "old.msg");
+			newFilePath = path.join(tmpBase, "new.msg");
+			oldDerivedDir = path.join(tmpBase, "_derived", "old.msg");
+			newDerivedDir = path.join(tmpBase, "_derived", "new.msg");
+			fs.mkdirSync(oldDerivedDir, {recursive: true});
+			fs.writeFileSync(path.join(oldDerivedDir, "cid_part1.png"), "stub-image");
+			fs.writeFileSync(path.join(oldDerivedDir, "att_invoice.pdf"), "stub-pdf");
+		});
+
+		afterEach(function() {
+			try {
+				if(tmpBase && fs.existsSync(tmpBase)) {
+					fs.rmSync(tmpBase, {recursive: true, force: true});
+				}
+			} catch(e) { /* best-effort */ }
+		});
+
+		it("renames the per-source subdirectory and preserves its contents", function() {
+			renameRoute._renameDerived(oldFilePath, newFilePath);
+			expect(fs.existsSync(newDerivedDir)).toBe(true);
+			expect(fs.existsSync(oldDerivedDir)).toBe(false);
+			expect(fs.readFileSync(path.join(newDerivedDir, "cid_part1.png"), "utf8")).toBe("stub-image");
+			expect(fs.readFileSync(path.join(newDerivedDir, "att_invoice.pdf"), "utf8")).toBe("stub-pdf");
+		});
+
+		it("cleans up the now-empty parent _derived/ directory", function() {
+			renameRoute._renameDerived(oldFilePath, newFilePath);
+			// newDerivedDir exists, so the parent _derived/ shouldn't be empty
+			expect(fs.existsSync(path.join(tmpBase, "_derived"))).toBe(true);
+			// Now remove newDerivedDir and call again — no-op + cleanup happens
+			fs.rmSync(newDerivedDir, {recursive: true, force: true});
+			renameRoute._renameDerived(newFilePath, oldFilePath);  // no source → no-op
+			// Parent _derived/ still exists since nothing was added back
+			// (no _derived/<source-basename>/ to clean up either)
+		});
+
+		it("is a no-op when no _derived/<basename>/ directory exists", function() {
+			fs.rmSync(path.join(tmpBase, "_derived"), {recursive: true, force: true});
+			expect(function() {
+				renameRoute._renameDerived(oldFilePath, newFilePath);
+			}).not.toThrow();
+			expect(fs.existsSync(path.join(tmpBase, "_derived"))).toBe(false);
+		});
+	});
 });

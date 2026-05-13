@@ -76,6 +76,8 @@ exports.handler = function(request, response, state) {
 	cleanEmptyDirs(path.dirname(oldResult.filePath), oldBaseDir);
 	// Rename matching _generated/ files
 	renameGenerated(oldResult.filePath, newResult.filePath);
+	// Rename matching _derived/<source-filename>/ directory
+	renameDerived(oldResult.filePath, newResult.filePath);
 	logger.log("Renamed: " + oldUri + " -> " + newUri);
 	sendJson(response, 200, {newCanonicalUri: newUri});
 };
@@ -112,6 +114,32 @@ function renameGenerated(oldFilePath, newFilePath) {
 	}
 }
 
+function renameDerived(oldFilePath, newFilePath) {
+	// _derived/<source-filename>/ holds multi-file extraction artifacts (file-pipeline).
+	// Convention matches deleteDerived in routes/delete.js.
+	var oldParsed = path.parse(oldFilePath);
+	var newParsed = path.parse(newFilePath);
+	var oldDerivedDir = path.join(oldParsed.dir, "_derived", oldParsed.base);
+	var newDerivedDir = path.join(newParsed.dir, "_derived", newParsed.base);
+	if(!fs.existsSync(oldDerivedDir)) {
+		return;
+	}
+	try {
+		$tw.utils.createDirectory(path.dirname(newDerivedDir));
+		fs.renameSync(oldDerivedDir, newDerivedDir);
+		// Clean up old _derived/ parent if now empty
+		var oldDerivedParent = path.join(oldParsed.dir, "_derived");
+		if(fs.existsSync(oldDerivedParent)) {
+			var remaining = fs.readdirSync(oldDerivedParent);
+			if(remaining.length === 0) {
+				fs.rmdirSync(oldDerivedParent);
+			}
+		}
+	} catch(e) {
+		logger.log("Derived directory rename error: " + e.message);
+	}
+}
+
 function cleanEmptyDirs(dirPath, stopAt) {
 	while(dirPath !== stopAt && dirPath.length > stopAt.length) {
 		try {
@@ -127,6 +155,10 @@ function cleanEmptyDirs(dirPath, stopAt) {
 		}
 	}
 }
+
+// Internal helpers exported for unit tests; not part of the public route API.
+exports._renameGenerated = renameGenerated;
+exports._renameDerived = renameDerived;
 
 function sendJson(response, statusCode, data) {
 	var body = JSON.stringify(data);

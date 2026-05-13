@@ -20,6 +20,9 @@ function getSubfolderForType(mimeType) {
 	if(mimeType.indexOf("video/") === 0) {
 		return "videos";
 	}
+	if(mimeType === "application/vnd.ms-outlook") {
+		return "email";
+	}
 	return "";
 }
 

@@ -96,7 +96,7 @@ FileDropZoneWidget.prototype.processFiles = function(fileList) {
 
 	for(var i = 0; i < fileList.length; i++) {
 		(function(file) {
-			var type = file.type || "";
+			var type = inferMimeType(file);
 			var filename = file.name || "unnamed";
 			if(allowedTypes.indexOf(type) === -1) {
 				pending--;
@@ -524,6 +524,29 @@ FileDropZoneWidget.prototype.getAllowedTypes = function() {
 	}
 	return [];
 };
+
+// Extension fallbacks for files whose `file.type` is empty or generic
+// (e.g. drag-and-drop from Outlook hands Chrome a virtual COM object with
+// no MIME hint). Keeps the allow-list authoritative — these mappings only
+// take effect when the browser couldn't infer anything useful.
+var EXTENSION_MIME_MAP = {
+	".msg": "application/vnd.ms-outlook",
+	".eml": "message/rfc822"
+};
+
+function inferMimeType(file) {
+	var type = file.type || "";
+	if(type && type !== "application/octet-stream") {
+		return type;
+	}
+	var name = (file.name || "").toLowerCase();
+	var dot = name.lastIndexOf(".");
+	if(dot < 0) {
+		return type;
+	}
+	var ext = name.substring(dot);
+	return EXTENSION_MIME_MAP[ext] || type;
+}
 
 FileDropZoneWidget.prototype.getLocationUriPrefix = function() {
 	var TAG = "$:/tags/rimir/file-upload/location";
