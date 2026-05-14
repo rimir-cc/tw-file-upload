@@ -1,0 +1,116 @@
+title: $:/plugins/rimir/file-upload/templates/media-grid
+type: text/vnd.tiddlywiki
+
+\whitespace trim
+
+\function fu-att-label(att) [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]get[msg-subject]] ~[<att>get[title]split[/]last[]]
+
+\function fu-att-newtab-href(att) [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]]
+
+\procedure fu-att-actions()
+<div class="fu-att-info">
+<span class="fu-att-name" title={{{ [<att>get[title]split[/]last[]] }}}><$text text={{{ [function[fu-att-label],<att>] }}}/></span>
+<$button class="tc-btn-invisible fu-att-action-btn" tooltip="Copy file link">
+<$action-sendmessage $message="tm-copy-to-clipboard" $param={{{ [<att>get[_canonical_uri]] }}}/>
+📋
+</$button>
+<a class="tc-btn-invisible fu-att-action-btn fu-att-newtab-link" href={{{ [function[fu-att-newtab-href],<att>] }}} target="_blank" rel="noopener" title="Open in new tab">↗</a>
+<$button class="tc-btn-invisible fu-att-action-btn fu-att-delete-btn" tooltip="Delete">
+<$action-sendmessage $message="tm-delete-tiddler" $param=<<att>>/>
+🗑
+</$button>
+</div>
+<$let descState={{{ [<att>addprefix[$:/state/rimir/file-upload/att-desc/]] }}}>
+<%if [<descState>get[text]match[edit]] %>
+<div class="fu-att-desc-popup-anchor">
+<div class="fu-att-desc-popup">
+<$edit-text tiddler=<<att>> field="description" tag="textarea" placeholder="Add description..." class="fu-att-desc-textarea" focus="true"/>
+<$button class="fu-att-desc-done-btn" set=<<descState>> setTo="">Done</$button>
+</div>
+</div>
+<%elseif [<att>has[description]] %>
+<div class="fu-att-desc">
+<span class="fu-att-desc-text"><$text text={{{ [<att>get[description]] }}}/></span>
+<$button class="tc-btn-invisible fu-att-desc-edit-btn" set=<<descState>> setTo="edit" tooltip="Edit description">✏️</$button>
+</div>
+<%else%>
+<$button class="tc-btn-invisible fu-att-add-desc-btn" set=<<descState>> setTo="edit">+ desc</$button>
+<%endif%>
+</$let>
+\end
+
+\procedure fu-tile-click-actions()
+<$action-setfield $tiddler="$:/state/rimir/file-upload/media-modal" text=<<att>>/>
+\end
+
+\procedure fu-render-media-grid(itemFilter)
+<!-- Inline navigator: appify replaces the page-level navigator, so without
+     this wrap `tm-delete-tiddler` dispatched from the tile delete button
+     would silently no-op (see tw-appify-no-navigator memory). file-upload's
+     delete-confirm.js monkey-patches `handleDeleteTiddlerEvent` on the
+     navigator class — the patch only runs when a navigator catches the
+     message. Dedicated state tiddlers keep this nav out of the global
+     story; sibling navigators with shared state are safe because we never
+     push to the story (no tm-navigate calls inside the grid). -->
+<$navigator story="$:/state/rimir/file-upload/media-grid/story" history="$:/state/rimir/file-upload/media-grid/history">
+<div class="fu-att-grid">
+<!-- 1. Thumbnailed non-image, non-video (PDFs, .msg, docx with generated thumb) -->
+<$list filter="[subfilter<itemFilter>has[_thumbnail_uri]] :filter[get[type]!prefix[image/]!prefix[video/]]" variable="att">
+<div class="fu-att-item">
+<div class="fu-att-thumb">
+<$button class="tc-btn-invisible fu-att-thumb-nav" actions=<<fu-tile-click-actions>>>
+<img draggable="false" loading="lazy" src={{{ [<att>get[_thumbnail_uri]] }}}/>
+</$button>
+</div>
+<<fu-att-actions>>
+</div>
+</$list>
+<!-- 2. Video thumbnails (with play badge) -->
+<$list filter="[subfilter<itemFilter>has[_thumbnail_uri]] :filter[get[type]prefix[video/]]" variable="att">
+<div class="fu-att-item">
+<div class="fu-att-thumb">
+<$button class="tc-btn-invisible fu-att-thumb-nav" actions=<<fu-tile-click-actions>>>
+<img draggable="false" loading="lazy" src={{{ [<att>get[_thumbnail_uri]] }}}/>
+<div class="fu-att-play-badge">&#9654;</div>
+</$button>
+</div>
+<<fu-att-actions>>
+</div>
+</$list>
+<!-- 3. Images (with or without thumb — fall back to canonical URI) -->
+<$list filter="[subfilter<itemFilter>] :filter[get[type]prefix[image/]]" variable="att">
+<div class="fu-att-item">
+<div class="fu-att-thumb">
+<$button class="tc-btn-invisible fu-att-thumb-nav" actions=<<fu-tile-click-actions>>>
+<$let thumbUri={{{ [<att>get[_thumbnail_uri]] }}} fullUri={{{ [<att>get[_canonical_uri]] }}}>
+<%if [<thumbUri>!is[blank]] %>
+<img draggable="false" loading="lazy" src=<<thumbUri>>/>
+<%else%>
+<img draggable="false" loading="lazy" src=<<fullUri>>/>
+<%endif%>
+</$let>
+</$button>
+</div>
+<<fu-att-actions>>
+</div>
+</$list>
+</div>
+<!-- 4. Plain file list (no thumbnail + not an image) -->
+<$list filter="[subfilter<itemFilter>!has[_thumbnail_uri]] :filter[get[type]!prefix[image/]]" variable="att">
+<div class="fu-att-file-row">
+<$button class="tc-btn-invisible fu-att-file-link" actions=<<fu-tile-click-actions>>>
+📄 <$text text={{{ [function[fu-att-label],<att>] }}}/>
+</$button>
+<$button class="tc-btn-invisible fu-att-action-btn" tooltip="Copy file link">
+<$action-sendmessage $message="tm-copy-to-clipboard" $param={{{ [<att>get[_canonical_uri]] }}}/>
+📋
+</$button>
+<a class="tc-btn-invisible fu-att-action-btn fu-att-newtab-link" href={{{ [function[fu-att-newtab-href],<att>] }}} target="_blank" rel="noopener" title="Open in new tab">↗</a>
+<$button class="tc-btn-invisible fu-att-action-btn fu-att-delete-btn" tooltip="Delete">
+<$action-sendmessage $message="tm-delete-tiddler" $param=<<att>>/>
+🗑
+</$button>
+</div>
+</$list>
+</$navigator>
+\end

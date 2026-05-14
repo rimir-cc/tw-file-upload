@@ -105,6 +105,40 @@ Action variables available in `actions`:
 |403 |Location is read-only or path traversal |
 |404 |File not found |
 
+!! Reusable media-grid + modal (since 0.1.23)
+
+Two wikitext components for any plugin that wants the priv-app journal-style attachment UX (per-tile delete/copy/open-new-tab/description-edit + click-to-preview modal). Used by orga-apps ≥ 0.2.66 in its note + meeting detail views.
+
+!!! `$:/plugins/rimir/file-upload/templates/media-grid`
+
+Exports `fu-render-media-grid(itemFilter)` — invoke as `<<fu-render-media-grid "[filter-expression-string]">>`. The filter is treated as wikitext so variable references inside (`<noteTitle>`, etc.) resolve at execution time using the calling scope.
+
+The procedure renders four sections in order, each iterating over `[subfilter<itemFilter>]` with an additional type test:
+
+|!Section |!Filter test |
+|Thumbnailed non-image, non-video |`has[_thumbnail_uri] +[!prefix[image/]!prefix[video/]]` |
+|Video (with play-badge overlay) |`has[_thumbnail_uri] +[prefix[video/]]` |
+|Images (thumb if available, else canonical URI) |`get[type]prefix[image/]` |
+|Plain-file row (no thumb + non-image) |`!has[_thumbnail_uri] +[!prefix[image/]]` |
+
+Each tile shows: name (or msg-subject from the `.email` sibling for `.msg` files), 📋 copy-link, ↗ open-in-new-tab, 🗑 delete (fires `tm-delete-tiddler` so file-upload's confirm-modal catches it), and an inline-popup ✏️ description editor that writes to the attachment's `description` field. Clicking a thumbnail or file-row sets `$:/state/rimir/file-upload/media-modal` to the attachment title — pair with `media-modal` to render the preview.
+
+The procedure wraps its body in an inline `<$navigator>` with dedicated state tiddlers (`$:/state/rimir/file-upload/media-grid/story` + `…/history`) so it's appify-safe by default — see `tw-appify-no-navigator` memory for why this matters.
+
+!!! `$:/plugins/rimir/file-upload/templates/media-modal`
+
+Self-mounting overlay. Transclude once per view via `<$transclude $tiddler="$:/plugins/rimir/file-upload/templates/media-modal" $mode="block"/>`. It renders nothing when `$:/state/rimir/file-upload/media-modal` is blank; otherwise opens a modal with:
+
+* Header: `.msg` subject or filename, close button (×)
+* Body, type-switched: `image/*` → `<img>`, `video/*` → `fu-render-video-player`, `application/pdf` → `<iframe>`, `application/vnd.ms-outlook` → inline-transclude of `<title>.email` through msg-import's `body/email` (Outlook-style attachments-row + markdown body), other → fallback "Open file in new tab" link
+* Footer: description-textarea bound to the attachment's `description` field + 📋 Copy-link + ↗ Open-in-new-tab + 🗑 Delete
+
+Also wraps its body in an inline `<$navigator>` so the modal's Delete button reaches file-upload's confirm-hijack in appify views.
+
+!!! Styles
+
+`$:/plugins/rimir/file-upload/styles/media-grid` ships all `.fu-att-*` (grid + tile) and `.fu-modal-*` (modal overlay + body + footer) classes. Consumers can override sizing via descendant selectors — for example orga-apps 0.2.66's `.oa-mt-attachments .fu-att-item { width: 90px; }` for the compact meeting sidebar.
+
 !! Config tiddlers
 
 |!Tiddler |!Default |!Description |

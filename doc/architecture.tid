@@ -34,6 +34,10 @@ The cascade walk is ''transitive'' (since 0.1.21): deleting or renaming a parent
 
 File-backed artifact types (currently `extraction-image`, `attachment`, `derived`, `conversion`, `thumbnail`) trigger an additional `/api/file-delete` per artifact during cascade-delete, so the on-disk binary follows the tiddler. Pure metadata artifacts (`extraction`, `summary`) only have their tiddler removed.
 
+!!! Reusable attachment UI (since 0.1.23)
+
+`templates/media-grid.tid` (`fu-render-media-grid`) and `templates/media-modal.tid` (`fu-media-modal`) provide a shared four-section grid + inline preview modal so any plugin can offer a consistent attachment-tile experience without copy-pasting markup. Both components wrap their body in an inline `<$navigator>` with dedicated state tiddlers, making them ''appify-safe by default'' — `tm-delete-tiddler` dispatched from a tile or modal Delete button correctly reaches file-upload's `handleDeleteTiddlerEvent` patch even inside appify views (which replace TW's page navigator). orga-apps consumes both components for its note + meeting detail views from 0.2.66.
+
 !!! Delete confirmation modal
 
 Since 0.1.21, attempting to delete a tiddler with `_canonical_uri` (i.e. any uploaded file or pipeline-produced artifact) opens a confirmation modal instead of TW's silent default. The modal lists:

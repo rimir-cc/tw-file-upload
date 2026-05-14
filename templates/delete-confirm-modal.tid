@@ -21,6 +21,14 @@ subtitle: Delete uploaded file?
 .rr-delete-confirm .rr-danger-btn:hover { background: #a02616; }
 </style>
 
+<!-- Wrap in an inline navigator: the modal's "Delete anyway" button re-dispatches
+     `tm-delete-tiddler` (with the bypass flag set) which must reach a navigator
+     for the original delete handler to fire. tm-modal renders the modal's
+     widget tree directly under `$tw.rootWidget` — in appify there is no
+     navigator above it, so without this wrap the re-dispatch silently no-ops
+     (see tw-appify-no-navigator memory). -->
+<$navigator story="$:/state/rimir/file-upload/delete-confirm/story" history="$:/state/rimir/file-upload/delete-confirm/history">
+
 <div class="rr-delete-confirm">
 
 <$let target={{{ [function[fu.target]] }}}>
@@ -75,3 +83,5 @@ Delete anyway
 </$let>
 
 </div>
+
+</$navigator>

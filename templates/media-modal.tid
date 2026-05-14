@@ -1,0 +1,98 @@
+title: $:/plugins/rimir/file-upload/templates/media-modal
+type: text/vnd.tiddlywiki
+
+\whitespace trim
+
+\import [[$:/plugins/rimir/file-upload/templates/video-player]]
+
+\procedure fu-modal-close()
+<$action-setfield $tiddler="$:/state/rimir/file-upload/media-modal" text=""/>
+<$action-setfield $tiddler="$:/state/rimir/file-upload/media-modal-desc" text=""/>
+\end
+
+<!-- NOTE: these sub-procedures take NO parameters; they read `att` from the
+     calling `<$let>` scope inherited via wikitext procedure semantics. An
+     earlier version declared `(att)` and was invoked as `<<fu-modal-body att>>`
+     which passed the LITERAL string "att" as the parameter value, making
+     every `[<att>get[type]…]` resolve against a tiddler titled "att" (which
+     doesn't exist) — every type branch missed and the user only saw the
+     "Open file in new tab" fallback. -->
+
+\procedure fu-modal-header()
+<div class="fu-modal-header">
+<span class="fu-modal-title"><$text text={{{ [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]get[msg-subject]] ~[<att>get[title]split[/]last[]] }}}/></span>
+<$button class="tc-btn-invisible fu-modal-close-btn" actions=<<fu-modal-close>>>&#10005;</$button>
+</div>
+\end
+
+\procedure fu-modal-body()
+<div class="fu-modal-body">
+<$tiddler tiddler=<<att>>>
+<%if [<att>get[type]prefix[video/]] %>
+<<fu-render-video-player>>
+<%elseif [<att>get[type]prefix[image/]] %>
+<img class="fu-modal-image" src={{{ [<att>get[_canonical_uri]] }}}/>
+<%elseif [<att>get[type]match[application/pdf]] %>
+<iframe class="fu-modal-pdf" src={{{ [<att>get[_canonical_uri]] }}} title={{{ [<att>get[title]split[/]last[]] }}}/>
+<%elseif [<att>get[type]match[application/vnd.ms-outlook]] %>
+<!-- Render the converted .email artifact inline. body/email (from msg-import)
+     puts the attachment row at top and the markdown body underneath. -->
+<$let emailTitle={{{ [<att>addsuffix[.email]] }}}>
+<div class="fu-modal-email">
+<$tiddler tiddler=<<emailTitle>>>
+<$transclude $tiddler="$:/plugins/rimir/msg-import/body/email" $mode="block"/>
+</$tiddler>
+</div>
+</$let>
+<%else%>
+<div class="fu-modal-file-fallback">
+<a href={{{ [<att>get[_canonical_uri]] }}} target="_blank" rel="noopener">Open file in new tab</a>
+</div>
+<%endif%>
+</$tiddler>
+</div>
+\end
+
+\procedure fu-modal-footer()
+<div class="fu-modal-footer">
+<div class="fu-modal-desc-row">
+<$edit-text tiddler=<<att>> field="description" tag="textarea" placeholder="Add description..." class="fu-modal-desc-textarea"/>
+</div>
+<div class="fu-modal-actions">
+<$button class="tc-btn-invisible fu-modal-action-btn" tooltip="Copy file link">
+<$action-sendmessage $message="tm-copy-to-clipboard" $param={{{ [<att>get[_canonical_uri]] }}}/>
+📋 Copy link
+</$button>
+<a class="tc-btn-invisible fu-modal-action-btn fu-att-newtab-link" href={{{ [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]] }}} target="_blank" rel="noopener">↗ Open in new tab</a>
+<$button class="tc-btn-invisible fu-modal-action-btn fu-modal-delete-btn" tooltip="Delete file">
+<$action-setfield $tiddler="$:/state/rimir/file-upload/media-modal" text=""/>
+<$action-sendmessage $message="tm-delete-tiddler" $param=<<att>>/>
+🗑 Delete
+</$button>
+</div>
+</div>
+\end
+
+\procedure fu-media-modal()
+<!-- Inline navigator wrap: the modal's "Delete" button dispatches
+     `tm-delete-tiddler`, which needs a navigator above it to fire
+     file-upload's delete-confirm hijack. In appify views there is no
+     page-level navigator, so without this wrap the message silently
+     no-ops (see tw-appify-no-navigator memory). -->
+<$navigator story="$:/state/rimir/file-upload/media-modal/story" history="$:/state/rimir/file-upload/media-modal/history">
+<$let att={{{ [{$:/state/rimir/file-upload/media-modal}!is[blank]] }}}>
+<$list filter="[<att>!is[blank]]" variable="_">
+<div class="fu-modal-overlay">
+<$button class="fu-modal-overlay-bg" actions=<<fu-modal-close>>></$button>
+<div class="fu-modal">
+<<fu-modal-header>>
+<<fu-modal-body>>
+<<fu-modal-footer>>
+</div>
+</div>
+</$list>
+</$let>
+</$navigator>
+\end
+
+<<fu-media-modal>>
