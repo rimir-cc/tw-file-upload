@@ -1,0 +1,8 @@
+title: $:/plugins/rimir/file-upload/notifications/rejected
+type: text/vnd.tiddlywiki
+
+Upload rejected (<<count>> file<<$text text={{{ [<count>compare:number:gt[1]then[s]] }}}>>): unsupported MIME type.
+
+<$text text=<<rejected-list>>/>
+
+//Allowed types are listed in `$:/config/rimir/file-upload/media-types`.//

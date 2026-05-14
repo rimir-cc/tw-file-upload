@@ -78,6 +78,7 @@ FileDropZoneWidget.prototype.processFiles = function(fileList) {
 	var globalDedup = this.isGlobalDedupEnabled();
 	var uploads = [];
 	var skipped = [];
+	var rejected = [];
 	var pending = fileList.length;
 
 	function onFileDone() {
@@ -86,10 +87,13 @@ FileDropZoneWidget.prototype.processFiles = function(fileList) {
 			self.wiki.addTiddler(new $tw.Tiddler({
 				title: "$:/temp/file-upload/last-upload",
 				type: "application/json",
-				text: JSON.stringify({uploads: uploads, skipped: skipped})
+				text: JSON.stringify({uploads: uploads, skipped: skipped, rejected: rejected})
 			}));
 			if(skipped.length > 0) {
 				self.notifySkipped(skipped);
+			}
+			if(rejected.length > 0) {
+				self.notifyRejected(rejected);
 			}
 		}
 	}
@@ -99,7 +103,8 @@ FileDropZoneWidget.prototype.processFiles = function(fileList) {
 			var type = inferMimeType(file);
 			var filename = file.name || "unnamed";
 			if(allowedTypes.indexOf(type) === -1) {
-				pending--;
+				rejected.push({filename: filename, mimeType: type || "(unknown)"});
+				onFileDone();
 				return;
 			}
 			// Hash from first 1024 bytes
@@ -162,11 +167,13 @@ FileDropZoneWidget.prototype.readFileCallback = function(tiddlerFieldsArray) {
 	var globalDedup = this.isGlobalDedupEnabled();
 	var uploads = [];
 	var skipped = [];
+	var rejected = [];
 	for(var i = 0; i < tiddlerFieldsArray.length; i++) {
 		var toImport = tiddlerFieldsArray[i];
 		var type = toImport.type || "";
 		// Client-side MIME type check
 		if(allowedTypes.indexOf(type) === -1) {
+			rejected.push({filename: toImport.title, mimeType: type || "(unknown)"});
 			continue;
 		}
 		var contentHash = computeHash(toImport.text);
@@ -228,12 +235,15 @@ FileDropZoneWidget.prototype.readFileCallback = function(tiddlerFieldsArray) {
 		}
 		this.performUpload(body, baseVars);
 	}
-	// Write batch result to temp tiddler (includes both uploaded and skipped)
+	// Write batch result to temp tiddler (includes uploaded, skipped, rejected)
 	this.wiki.addTiddler(new $tw.Tiddler({
 		title: "$:/temp/file-upload/last-upload",
 		type: "application/json",
-		text: JSON.stringify({uploads: uploads, skipped: skipped})
+		text: JSON.stringify({uploads: uploads, skipped: skipped, rejected: rejected})
 	}));
+	if(rejected.length > 0) {
+		this.notifyRejected(rejected);
+	}
 	// Batch notification for all skipped files
 	if(skipped.length > 0) {
 		this.notifySkipped(skipped);
@@ -482,6 +492,21 @@ FileDropZoneWidget.prototype.notifySkipped = function(skippedArray) {
 		paramObject: {
 			count: String(skippedArray.length),
 			"skipped-list": lines.join("\n")
+		}
+	});
+};
+
+FileDropZoneWidget.prototype.notifyRejected = function(rejectedArray) {
+	var lines = [];
+	for(var i = 0; i < rejectedArray.length; i++) {
+		lines.push(rejectedArray[i].filename + " (" + rejectedArray[i].mimeType + ")");
+	}
+	this.dispatchEvent({
+		type: "tm-notify",
+		param: "$:/plugins/rimir/file-upload/notifications/rejected",
+		paramObject: {
+			count: String(rejectedArray.length),
+			"rejected-list": lines.join("\n")
 		}
 	});
 };

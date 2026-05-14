@@ -25,7 +25,7 @@ subtitle: Delete uploaded file?
 
 <$let target={{{ [function[fu.target]] }}}>
 
-Delete `<$text text=<<target>>/>` ?
+Delete "<$text text=<<target>>/>" ?
 
 <$list filter="[function[fu.cascade]first[]]" emptyMessage="//No additional artifacts depend on this tiddler.//">
 
