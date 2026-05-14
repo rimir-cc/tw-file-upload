@@ -28,9 +28,23 @@ The ''uri-resolver'' library module (`$:/plugins/rimir/file-upload/uri-resolver`
 Derived data (thumbnails, extractions, summaries) is linked to parent file tiddlers via:
 
 * `_artifact_source` &mdash; the parent tiddler's title
-* `_artifact_type` &mdash; classification (`thumbnail`, `extraction`, `extraction-image`, `summary`)
+* `_artifact_type` &mdash; classification (`thumbnail`, `extraction`, `extraction-image`, `summary`, `attachment`, `derived`, `conversion`)
 
-When a file tiddler is deleted or renamed, all artifacts are automatically cascaded.
+The cascade walk is ''transitive'' (since 0.1.21): deleting or renaming a parent walks the `_artifact_source` chain to any depth, so recursive pipelines (e.g. a PDF attachment of a `.msg` that itself produces a thumbnail + text extraction) clean up in one shot. The walk tracks a visited-set to survive cycles.
+
+File-backed artifact types (currently `extraction-image`, `attachment`, `derived`, `conversion`, `thumbnail`) trigger an additional `/api/file-delete` per artifact during cascade-delete, so the on-disk binary follows the tiddler. Pure metadata artifacts (`extraction`, `summary`) only have their tiddler removed.
+
+!!! Delete confirmation modal
+
+Since 0.1.21, attempting to delete a tiddler with `_canonical_uri` (i.e. any uploaded file or pipeline-produced artifact) opens a confirmation modal instead of TW's silent default. The modal lists:
+
+* The full transitive cascade about to be deleted
+* A hint at the `_derived/<basename>/` directory tree that will be removed
+* Every tiddler that backlinks to anything in the cascade
+
+A danger-styled "Delete anyway" button re-dispatches `tm-delete-tiddler` after setting `$:/state/rimir/file-upload/delete-confirm/bypass` so the patched handler lets the navigator's default path run this time.
+
+Disable via `$:/config/rimir/file-upload/confirm-deletes` (default `yes`).
 
 !! Data flow
 

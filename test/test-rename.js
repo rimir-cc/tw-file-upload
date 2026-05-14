@@ -178,3 +178,63 @@ describe("file-upload: rename route", function() {
 		});
 	});
 });
+
+describe("file-upload: deleteDerived recursion", function() {
+
+	var deleteRoute = require("$:/plugins/rimir/file-upload/routes/delete");
+	var fs = require("fs");
+	var path = require("path");
+	var os = require("os");
+
+	var tmpBase, filePath, derivedDir;
+
+	beforeEach(function() {
+		tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), "fu-delete-derived-"));
+		filePath = path.join(tmpBase, "parent.msg");
+		derivedDir = path.join(tmpBase, "_derived", "parent.msg");
+		fs.mkdirSync(derivedDir, {recursive: true});
+		fs.writeFileSync(path.join(derivedDir, "att_invoice.pdf"), "pdf-bytes");
+		fs.writeFileSync(path.join(derivedDir, "cid_part1.png"), "png-bytes");
+		// Nested pipeline output (e.g. PDF attachment's own thumbnail).
+		var nested = path.join(derivedDir, "_derived", "att_invoice.pdf");
+		fs.mkdirSync(nested, {recursive: true});
+		fs.writeFileSync(path.join(nested, "thumb.png"), "thumb-bytes");
+		fs.writeFileSync(path.join(nested, "_generated"), ""); // a stray empty file
+	});
+
+	afterEach(function() {
+		try {
+			if(tmpBase && fs.existsSync(tmpBase)) {
+				fs.rmSync(tmpBase, {recursive: true, force: true});
+			}
+		} catch(e) { /* best-effort */ }
+	});
+
+	it("recursively deletes nested _derived/<basename>/ chains", function() {
+		deleteRoute._deleteDerived(filePath);
+		expect(fs.existsSync(derivedDir)).toBe(false);
+	});
+
+	it("cleans up the now-empty _derived/ parent directory", function() {
+		deleteRoute._deleteDerived(filePath);
+		expect(fs.existsSync(path.join(tmpBase, "_derived"))).toBe(false);
+	});
+
+	it("is a graceful no-op when the per-source dir does not exist", function() {
+		fs.rmSync(derivedDir, {recursive: true, force: true});
+		expect(function() {
+			deleteRoute._deleteDerived(filePath);
+		}).not.toThrow();
+	});
+
+	it("preserves sibling _derived/<other>/ directories", function() {
+		var sibling = path.join(tmpBase, "_derived", "other.msg");
+		fs.mkdirSync(sibling, {recursive: true});
+		fs.writeFileSync(path.join(sibling, "stuff"), "x");
+		deleteRoute._deleteDerived(filePath);
+		expect(fs.existsSync(derivedDir)).toBe(false);
+		expect(fs.existsSync(sibling)).toBe(true);
+		// _derived/ parent stays because the sibling is still there.
+		expect(fs.existsSync(path.join(tmpBase, "_derived"))).toBe(true);
+	});
+});

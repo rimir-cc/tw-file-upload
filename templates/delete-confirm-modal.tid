@@ -1,0 +1,77 @@
+title: $:/plugins/rimir/file-upload/templates/delete-confirm-modal
+subtitle: Delete uploaded file?
+
+\function fu.state.tiddler() [[$:/state/rimir/file-upload/delete-confirm/cascade]]
+\function fu.state.json() [{$:/state/rimir/file-upload/delete-confirm/cascade}jsonget[]]
+\function fu.target() [{$:/state/rimir/file-upload/delete-confirm/cascade}jsonget[target]]
+\function fu.cascade() [{$:/state/rimir/file-upload/delete-confirm/cascade}jsonindexes[cascade]] :map[{$:/state/rimir/file-upload/delete-confirm/cascade}jsonget[cascade],<currentTiddler>]
+\function fu.backlinks() [{$:/state/rimir/file-upload/delete-confirm/cascade}jsonindexes[backlinks]] :map[{$:/state/rimir/file-upload/delete-confirm/cascade}jsonget[backlinks],<currentTiddler>]
+\function fu.derivedHint() [{$:/state/rimir/file-upload/delete-confirm/cascade}jsonget[derivedHint]]
+
+<style scoped>
+.rr-delete-confirm { font-size: 0.9em; }
+.rr-delete-confirm h3 { margin: 0.4em 0 0.2em; }
+.rr-delete-confirm ul { margin: 0.2em 0 0.6em 1.2em; padding: 0; }
+.rr-delete-confirm li { margin: 0.1em 0; word-break: break-all; }
+.rr-delete-confirm .rr-derived-hint { font-family: monospace; font-size: 0.85em; opacity: 0.8; }
+.rr-delete-confirm .rr-backlinks-warn { color: #b35900; }
+.rr-delete-confirm .rr-action-bar { margin-top: 0.8em; display: flex; gap: 0.5em; justify-content: flex-end; }
+.rr-delete-confirm button { padding: 0.3em 0.9em; }
+.rr-delete-confirm .rr-danger-btn { background: #c0392b; color: #fff; border: 1px solid #a02616; }
+.rr-delete-confirm .rr-danger-btn:hover { background: #a02616; }
+</style>
+
+<div class="rr-delete-confirm">
+
+<$let target={{{ [function[fu.target]] }}}>
+
+Delete `<$text text=<<target>>/>` ?
+
+<$list filter="[function[fu.cascade]first[]]" emptyMessage="//No additional artifacts depend on this tiddler.//">
+
+''This will also remove:''
+
+<ul>
+<$list filter="[function[fu.cascade]]" variable="art">
+<li><$text text=<<art>>/></li>
+</$list>
+</ul>
+</$list>
+
+<$list filter="[function[fu.derivedHint]!is[blank]]" variable="hint">
+<div class="rr-derived-hint">…and any files under <$text text=<<hint>>/></div>
+</$list>
+
+<$list filter="[function[fu.backlinks]first[]]">
+
+<div class="rr-backlinks-warn">
+
+⚠️ ''Referenced from <$count filter="[function[fu.backlinks]]"/> other tiddler(s):''
+
+<ul>
+<$list filter="[function[fu.backlinks]limit[20]]" variable="bl">
+<li><$link to=<<bl>>><$text text=<<bl>>/></$link></li>
+</$list>
+<$list filter="[function[fu.backlinks]count[]subtract[20]compare:integer:gt[0]then[yes]]">
+<li>…and <$count filter="[function[fu.backlinks]]"/>−20 more</li>
+</$list>
+</ul>
+
+These references will break if you proceed.
+</div>
+</$list>
+
+<div class="rr-action-bar">
+<$button message="tm-close-tiddler">Cancel</$button>
+<$button class="rr-danger-btn">
+<$action-setfield $tiddler="$:/state/rimir/file-upload/delete-confirm/bypass" text=<<target>>/>
+<$action-deletetiddler $filter="[[$:/state/rimir/file-upload/delete-confirm/cascade]]"/>
+<$action-sendmessage $message="tm-close-tiddler"/>
+<$action-sendmessage $message="tm-delete-tiddler" $param=<<target>>/>
+Delete anyway
+</$button>
+</div>
+
+</$let>
+
+</div>

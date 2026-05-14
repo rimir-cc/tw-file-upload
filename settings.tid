@@ -139,6 +139,16 @@ Resolution (max dimension): <$edit-text tiddler="$:/config/rimir/file-upload/thu
 <$checkbox tiddler="$:/config/rimir/file-upload/global-dedup" field="text" checked="yes" unchecked="no" default="no"> Enable global content-hash deduplication <span class="rr-muted">(skip upload if identical file already exists)</span></$checkbox>
 </div>
 
+!! Delete confirmation
+
+<div class="rr-input-row">
+<$checkbox tiddler="$:/config/rimir/file-upload/confirm-deletes" field="text" checked="yes" unchecked="no" default="yes"> Confirm before deleting uploaded files <span class="rr-muted">(shows transitive cascade + backlinks; recommended)</span></$checkbox>
+</div>
+
+<div class="rr-input-row">
+<span class="rr-muted">When enabled, deleting any tiddler with `_canonical_uri` (uploaded files and their artifacts) opens a modal listing every tiddler and on-disk file that will be removed, plus any tiddlers that link to anything in the cascade. Turn off only if you accept that misclicking Delete on a media tiddler can take its entire derived tree with it.</span>
+</div>
+
 ---
 
 !! Artifact Migration

@@ -58,20 +58,57 @@ function getLocationForUri(uri) {
 	return bestMatch;
 }
 
+// Artifact types whose `_canonical_uri` refers to a binary file managed by
+// file-upload. Deleting one of these cascade-targets must also remove the
+// underlying file from disk. Other types (e.g. "extraction" — captured text)
+// only own the tiddler.
+var FILE_BACKED_ARTIFACT_TYPES = {
+	"extraction-image": true,
+	"attachment": true,
+	"derived": true,
+	"conversion": true,
+	"thumbnail": true
+};
+
 /*
-Cascade-delete all artifact tiddlers linked to a source title.
+Walk the _artifact_source chain transitively starting from `sourceTitle`.
+Returns an array of all descendant artifact titles in deletion order
+(leaves first). Visits each title at most once — safe against cycles.
+*/
+function collectCascade(sourceTitle) {
+	var visited = Object.create(null);
+	var ordered = [];
+	function walk(t) {
+		var artifacts = $tw.wiki.filterTiddlers("[_artifact_source[" + t + "]]");
+		for(var i = 0; i < artifacts.length; i++) {
+			var child = artifacts[i];
+			if(visited[child]) continue;
+			visited[child] = true;
+			walk(child);
+			ordered.push(child);
+		}
+	}
+	walk(sourceTitle);
+	return ordered;
+}
+
+/*
+Cascade-delete all artifact tiddlers transitively linked to a source title.
+Also removes the underlying file from disk for artifacts whose
+`_artifact_type` is in the file-backed allow-list.
 */
 function cascadeDeleteArtifacts(sourceTitle) {
-	var artifacts = $tw.wiki.filterTiddlers("[_artifact_source[" + sourceTitle + "]]");
-	for(var i = 0; i < artifacts.length; i++) {
-		// For artifacts that are themselves files (extraction-image), also delete from disk
-		var artTiddler = $tw.wiki.getTiddler(artifacts[i]);
-		if(artTiddler && artTiddler.fields._canonical_uri && artTiddler.fields._artifact_type === "extraction-image") {
-			deleteFileFromServer(artTiddler.fields._canonical_uri);
+	var cascade = collectCascade(sourceTitle);
+	for(var i = 0; i < cascade.length; i++) {
+		var artTitle = cascade[i];
+		var artTiddler = $tw.wiki.getTiddler(artTitle);
+		if(artTiddler && artTiddler.fields._canonical_uri &&
+			FILE_BACKED_ARTIFACT_TYPES[artTiddler.fields._artifact_type]) {
+			exports._deleteFileFromServer(artTiddler.fields._canonical_uri);
 		}
-		$tw.wiki.deleteTiddler(artifacts[i]);
+		$tw.wiki.deleteTiddler(artTitle);
 	}
-	return artifacts.length;
+	return cascade.length;
 }
 
 /*
@@ -85,52 +122,73 @@ Execution order context:
 - Defensive: skip artifacts that no longer exist (in case of concurrent changes)
 */
 function cascadeRenameArtifacts(oldTitle, newTitle) {
-	var artifacts = $tw.wiki.filterTiddlers("[_artifact_source[" + oldTitle + "]]");
-	for(var i = 0; i < artifacts.length; i++) {
-		var artTiddler = $tw.wiki.getTiddler(artifacts[i]);
-		if(!artTiddler) continue;
-		// Update _artifact_source and legacy fields
-		var updates = { _artifact_source: newTitle };
-		if(artTiddler.fields["extraction-source"] === oldTitle) {
-			updates["extraction-source"] = newTitle;
-		}
-		// If artifact title embeds the parent title, rename it too
-		var artTitle = artifacts[i];
-		if(artTitle.indexOf(oldTitle) === 0) {
-			var newArtTitle = newTitle + artTitle.substring(oldTitle.length);
-			if(newArtTitle !== artTitle) {
-				// Check target doesn't already exist (defensive)
-				if(!$tw.wiki.tiddlerExists(newArtTitle)) {
-					$tw.wiki.addTiddler(new $tw.Tiddler(artTiddler, updates, { title: newArtTitle }));
-					$tw.wiki.deleteTiddler(artTitle);
-				} else {
-					// Target exists — just update fields on it
-					var existing = $tw.wiki.getTiddler(newArtTitle);
-					if(existing) {
-						$tw.wiki.addTiddler(new $tw.Tiddler(existing, updates));
+	// Walk transitively in BFS order so each layer rebuilds before we recurse
+	// into its (now-renamed) children. We track which titles we've handled to
+	// avoid re-processing when a grandchild's parent title has changed.
+	var visited = Object.create(null);
+	function renameLayer(currentOld, currentNew) {
+		var artifacts = $tw.wiki.filterTiddlers("[_artifact_source[" + currentOld + "]]");
+		for(var i = 0; i < artifacts.length; i++) {
+			var artTitle = artifacts[i];
+			if(visited[artTitle]) continue;
+			visited[artTitle] = true;
+			var artTiddler = $tw.wiki.getTiddler(artTitle);
+			if(!artTiddler) continue;
+			var updates = { _artifact_source: currentNew };
+			if(artTiddler.fields["extraction-source"] === currentOld) {
+				updates["extraction-source"] = currentNew;
+			}
+			var renamedTitle = artTitle;
+			if(artTitle.indexOf(currentOld) === 0) {
+				var candidate = currentNew + artTitle.substring(currentOld.length);
+				if(candidate !== artTitle) {
+					if(!$tw.wiki.tiddlerExists(candidate)) {
+						$tw.wiki.addTiddler(new $tw.Tiddler(artTiddler, updates, { title: candidate }));
+						$tw.wiki.deleteTiddler(artTitle);
+						renamedTitle = candidate;
+					} else {
+						// Target exists — merge fields onto it and drop the old title.
+						var existing = $tw.wiki.getTiddler(candidate);
+						if(existing) {
+							$tw.wiki.addTiddler(new $tw.Tiddler(existing, updates));
+						}
+						$tw.wiki.deleteTiddler(artTitle);
+						renamedTitle = candidate;
 					}
-					$tw.wiki.deleteTiddler(artTitle);
+				} else {
+					$tw.wiki.addTiddler(new $tw.Tiddler(artTiddler, updates));
 				}
 			} else {
 				$tw.wiki.addTiddler(new $tw.Tiddler(artTiddler, updates));
 			}
-		} else {
-			// Just update the back-reference
-			$tw.wiki.addTiddler(new $tw.Tiddler(artTiddler, updates));
+			// Recurse into grandchildren — their _artifact_source still points
+			// at the OLD (pre-rename) artifact title until we rewire them.
+			renameLayer(artTitle, renamedTitle);
 		}
 	}
+	renameLayer(oldTitle, newTitle);
 }
 
+// Test-only exports.
+exports._cascadeDeleteArtifacts = cascadeDeleteArtifacts;
+exports._cascadeRenameArtifacts = cascadeRenameArtifacts;
+exports._collectCascade = collectCascade;
+exports._FILE_BACKED_ARTIFACT_TYPES = FILE_BACKED_ARTIFACT_TYPES;
+
 /*
-Fire-and-forget file deletion via XHR.
+Fire-and-forget file deletion via XHR. Exposed on exports so tests can stub
+it without an XMLHttpRequest polyfill — see exports._deleteFileFromServer.
 */
 function deleteFileFromServer(uri) {
+	if(typeof XMLHttpRequest === "undefined") return;
 	var xhr = new XMLHttpRequest();
 	xhr.open("POST", "/api/file-delete", true);
 	xhr.setRequestHeader("Content-Type", "application/json");
 	xhr.setRequestHeader("X-Requested-With", "TiddlyWiki");
 	xhr.send(JSON.stringify({uri: uri}));
 }
+
+exports._deleteFileFromServer = deleteFileFromServer;
 
 exports.startup = function() {
 	// --- Save hook (handles rename) ---

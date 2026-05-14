@@ -92,28 +92,31 @@ function deleteGenerated(filePath) {
 
 function deleteDerived(filePath) {
 	// _derived/ directory for multi-file extraction artifacts
-	// Located in <parent-dir>/_derived/<source-filename>/
+	// Located in <parent-dir>/_derived/<source-filename>/. Recursive rmSync
+	// handles nested _derived/_derived/<attachment>/... trees produced when
+	// pipelines run recursively on email attachments etc.
 	var parsed = path.parse(filePath);
 	var derivedDir = path.join(parsed.dir, "_derived", parsed.base);
 	if(!fs.existsSync(derivedDir)) {
 		return;
 	}
 	try {
-		var files = fs.readdirSync(derivedDir);
-		for(var i = 0; i < files.length; i++) {
-			fs.unlinkSync(path.join(derivedDir, files[i]));
-		}
-		fs.rmdirSync(derivedDir);
+		fs.rmSync(derivedDir, {recursive: true, force: true});
 		// Clean up _derived/ parent if now empty
 		var derivedParent = path.join(parsed.dir, "_derived");
-		var remaining = fs.readdirSync(derivedParent);
-		if(remaining.length === 0) {
-			fs.rmdirSync(derivedParent);
+		if(fs.existsSync(derivedParent)) {
+			var remaining = fs.readdirSync(derivedParent);
+			if(remaining.length === 0) {
+				fs.rmdirSync(derivedParent);
+			}
 		}
 	} catch(e) {
 		logger.log("Derived file delete error: " + e.message);
 	}
 }
+
+exports._deleteDerived = deleteDerived;
+exports._deleteGenerated = deleteGenerated;
 
 function cleanEmptyDirs(dirPath, stopAt) {
 	while(dirPath !== stopAt && dirPath.length > stopAt.length) {
