@@ -41,6 +41,14 @@ describe("file-upload: helpers", function() {
 		it("should return empty string for application/json", function() {
 			expect(helpers.getSubfolderForType("application/json")).toBe("");
 		});
+
+		it("should return 'email' for application/vnd.ms-outlook", function() {
+			expect(helpers.getSubfolderForType("application/vnd.ms-outlook")).toBe("email");
+		});
+
+		it("should return 'email' for message/rfc822 (.eml)", function() {
+			expect(helpers.getSubfolderForType("message/rfc822")).toBe("email");
+		});
 	});
 
 	describe("sanitizePath", function() {

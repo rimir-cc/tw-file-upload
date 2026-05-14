@@ -23,6 +23,9 @@ function getSubfolderForType(mimeType) {
 	if(mimeType === "application/vnd.ms-outlook") {
 		return "email";
 	}
+	if(mimeType === "message/rfc822") {
+		return "email";
+	}
 	return "";
 }
 
