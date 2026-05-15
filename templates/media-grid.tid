@@ -107,7 +107,15 @@ Gracefully no-ops when the EXIF fields aren't set.
 <<fu-att-extra-actions>>
 \end
 
-\procedure fu-att-tile-img(imgSrc, showPlayBadge)
+<!-- NB: no parameters. `<<imgSrc>>`, `<<showPlayBadge>>`, `<<itemCls>>` and
+     `<<att>>` are read from the caller's `<$let>` / `<$list>` scope via
+     procedure-scope inheritance. Positional-arg passing for procedures
+     like `<<myproc {{{[<var>]}}}>>` is unreliable — TW's macro-call arg
+     parser treats `{{{...}}}` as a literal bareword, NOT as a transclude
+     that resolves at call site (see tw-procedure-call-passes-literal
+     memory). For values that aren't compile-time constants, use $let
+     binding in the caller scope instead. -->
+\procedure fu-att-tile-img()
 <%if [<fu-draggable>match[yes]] %>
 <$draggable tiddler=<<att>> class=<<itemCls>>>
 <<fu-att-tile-img-body>>
@@ -158,13 +166,13 @@ Gracefully no-ops when the EXIF fields aren't set.
 <!-- 1. Thumbnailed non-image, non-video (PDFs, .msg, docx with generated thumb) -->
 <$list filter="[subfilter<itemFilter>has[_thumbnail_uri]] :filter[get[type]!prefix[image/]!prefix[video/]]" variable="att">
 <$let imgSrc={{{ [<att>get[_thumbnail_uri]] }}} itemCls="fu-att-item">
-<<fu-att-tile-img {{{ [<imgSrc>] }}}>>
+<<fu-att-tile-img>>
 </$let>
 </$list>
 <!-- 2. Video thumbnails (with play badge) -->
 <$list filter="[subfilter<itemFilter>has[_thumbnail_uri]] :filter[get[type]prefix[video/]]" variable="att">
-<$let imgSrc={{{ [<att>get[_thumbnail_uri]] }}} itemCls="fu-att-item">
-<<fu-att-tile-img {{{ [<imgSrc>] }}} "yes">>
+<$let imgSrc={{{ [<att>get[_thumbnail_uri]] }}} itemCls="fu-att-item" showPlayBadge="yes">
+<<fu-att-tile-img>>
 </$let>
 </$list>
 <!-- 3. Images (with or without thumb — fall back to canonical URI). EXIF-portrait
@@ -182,7 +190,7 @@ Gracefully no-ops when the EXIF fields aren't set.
   isPortrait={{{ [<rotated>!is[blank]] :filter[<exifW>compare:number:gt<exifH>] ~[<exifH>compare:number:gt<exifW>] }}}
   itemCls={{{ [<isPortrait>!is[blank]then[fu-att-item fu-att-item-portrait]] ~[[fu-att-item]] }}}
 >
-<<fu-att-tile-img {{{ [<imgSrc>] }}}>>
+<<fu-att-tile-img>>
 </$let>
 </$list>
 </div>

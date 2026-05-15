@@ -262,4 +262,103 @@ describe("file-upload: media-grid filter functions", function () {
 			]);
 		});
 	});
+
+	// Pins the tile rendering paths. Regression for 0.1.26 — when the grid
+	// was factored into fu-att-tile-img + fu-att-tile-img-body, we want to
+	// guarantee that <<imgSrc>> propagates from outer-procedure parameter
+	// into the inner sub-procedure that emits the <img> tag.
+	describe("rendered tile shape", function () {
+
+		function render(snippet) {
+			var w = $tw.wiki.makeWidget(
+				$tw.wiki.parseText("text/vnd.tiddlywiki", snippet),
+				{}
+			);
+			var container = $tw.fakeDocument.createElement("div");
+			w.render(container, null);
+			return container.innerHTML;
+		}
+
+		it("renders <img src> for a thumbnailed PDF tile (section 1)", function () {
+			add("$:/test/fu/render/foo.pdf", {
+				type: "application/pdf",
+				_thumbnail_uri: "/files/_generated/foo_thumb.png",
+				_canonical_uri: "/files/foo.pdf"
+			});
+			var html = render(
+				"\\import [[$:/plugins/rimir/file-upload/templates/media-grid]]\n" +
+				"<<fu-render-media-grid \"[[$:/test/fu/render/foo.pdf]]\">>\n"
+			);
+			expect(html).toContain('src="/files/_generated/foo_thumb.png"');
+		});
+
+		it("renders <img src> for a thumbnailed video tile (section 2, with play badge)", function () {
+			add("$:/test/fu/render/bar.mp4", {
+				type: "video/mp4",
+				_thumbnail_uri: "/files/_generated/bar_thumb.png",
+				_canonical_uri: "/files/bar.mp4"
+			});
+			var html = render(
+				"\\import [[$:/plugins/rimir/file-upload/templates/media-grid]]\n" +
+				"<<fu-render-media-grid \"[[$:/test/fu/render/bar.mp4]]\">>\n"
+			);
+			expect(html).toContain('src="/files/_generated/bar_thumb.png"');
+			expect(html).toContain("fu-att-play-badge");
+		});
+
+		it("renders <img src> from _thumbnail_uri for an image with thumb (section 3)", function () {
+			add("$:/test/fu/render/photo.jpg", {
+				type: "image/jpeg",
+				_thumbnail_uri: "/files/_generated/photo_thumb.png",
+				_canonical_uri: "/files/photo.jpg"
+			});
+			var html = render(
+				"\\import [[$:/plugins/rimir/file-upload/templates/media-grid]]\n" +
+				"<<fu-render-media-grid \"[[$:/test/fu/render/photo.jpg]]\">>\n"
+			);
+			expect(html).toContain('src="/files/_generated/photo_thumb.png"');
+		});
+
+		it("renders <img src> from _canonical_uri for an image without thumb (section 3)", function () {
+			add("$:/test/fu/render/raw.jpg", {
+				type: "image/jpeg",
+				_canonical_uri: "/files/raw.jpg"
+			});
+			var html = render(
+				"\\import [[$:/plugins/rimir/file-upload/templates/media-grid]]\n" +
+				"<<fu-render-media-grid \"[[$:/test/fu/render/raw.jpg]]\">>\n"
+			);
+			expect(html).toContain('src="/files/raw.jpg"');
+		});
+
+		it("applies .fu-att-item-portrait class when EXIF says portrait", function () {
+			add("$:/test/fu/render/portrait.jpg", {
+				type: "image/jpeg",
+				_canonical_uri: "/files/p.jpg",
+				"exif-width": "1080",
+				"exif-height": "1920"
+			});
+			var html = render(
+				"\\import [[$:/plugins/rimir/file-upload/templates/media-grid]]\n" +
+				"<<fu-render-media-grid \"[[$:/test/fu/render/portrait.jpg]]\">>\n"
+			);
+			expect(html).toContain("fu-att-item-portrait");
+		});
+
+		it("wraps tiles in <$draggable> when fu-draggable=yes", function () {
+			add("$:/test/fu/render/drag.pdf", {
+				type: "application/pdf",
+				_thumbnail_uri: "/files/_generated/drag_thumb.png",
+				_canonical_uri: "/files/drag.pdf"
+			});
+			var html = render(
+				"\\import [[$:/plugins/rimir/file-upload/templates/media-grid]]\n" +
+				"<$let fu-draggable=\"yes\">\n" +
+				"<<fu-render-media-grid \"[[$:/test/fu/render/drag.pdf]]\">>\n" +
+				"</$let>\n"
+			);
+			// $draggable widget renders as a <div draggable="true"> in the DOM
+			expect(html).toContain('draggable="true"');
+		});
+	});
 });
