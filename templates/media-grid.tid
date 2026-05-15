@@ -3,11 +3,63 @@ type: text/vnd.tiddlywiki
 
 \whitespace trim
 
+<!--
+Reusable attachment-grid components. Consumers transclude this template
+and invoke `<<fu-render-media-grid "<filter>">>`.
+
+Opt-in extras (set as <$let> variables in the calling scope):
+
+  fu-draggable        "yes" → each tile wraps in <$draggable> for drag-out.
+                      Anything else → plain <div>. Default landscape cell.
+
+  fu-delete-mode      "remove" → tile delete-button fires
+                          $action-listops -[<att>] on <<fu-delete-group>>
+                          (used by media-group views — removes membership,
+                          keeps the underlying file)
+                      "none"  → no delete button shown
+                      anything else (default) → tm-delete-tiddler so
+                          file-upload's confirm-cascade modal catches it
+
+  fu-delete-group     Target tiddler for the remove-mode listops call.
+                      Only consulted when fu-delete-mode="remove".
+
+Extension hook:
+
+  \procedure fu-att-extra-actions()  — default no-op. Callers redefining
+  this procedure get its rendering appended below the action row in
+  every tile. Receives <att> in scope. Used by priv-app to render
+  media-group breadcrumb badges on each tile.
+
+EXIF-portrait sizing for the image section is always on; reads
+`exif-width` / `exif-height` / `exif-orientation` and applies the
+`.fu-att-item-portrait` CSS class when the photo is taller than wide
+(accounting for the four 90°-rotated EXIF orientation values 5/6/7/8).
+Gracefully no-ops when the EXIF fields aren't set.
+-->
+
 \function fu-att-email-artifact(att) [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]] ~[<att>get[type]match[message/rfc822]then<att>addsuffix[.email]]
 
 \function fu-att-label(att) [function[fu-att-email-artifact],<att>] :map[get[msg-subject]] :filter[!is[blank]] ~[<att>get[title]split[/]last[]]
 
 \function fu-att-newtab-href(att) [function[fu-att-email-artifact],<att>] :map[encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]]
+
+\procedure fu-att-extra-actions()
+\end
+
+\procedure fu-att-delete-button()
+<%if [<fu-delete-mode>match[remove]] %>
+<$button class="tc-btn-invisible fu-att-action-btn fu-att-delete-btn" tooltip="Remove from group">
+<$action-listops $tiddler=<<fu-delete-group>> $field="members" $subfilter="-[<att>]"/>
+🗑
+</$button>
+<%elseif [<fu-delete-mode>match[none]] %>
+<%else%>
+<$button class="tc-btn-invisible fu-att-action-btn fu-att-delete-btn" tooltip="Delete">
+<$action-sendmessage $message="tm-delete-tiddler" $param=<<att>>/>
+🗑
+</$button>
+<%endif%>
+\end
 
 \procedure fu-att-actions()
 <div class="fu-att-info">
@@ -17,10 +69,7 @@ type: text/vnd.tiddlywiki
 📋
 </$button>
 <a class="tc-btn-invisible fu-att-action-btn fu-att-newtab-link" href={{{ [function[fu-att-newtab-href],<att>] }}} target="_blank" rel="noopener" title="Open in new tab">↗</a>
-<$button class="tc-btn-invisible fu-att-action-btn fu-att-delete-btn" tooltip="Delete">
-<$action-sendmessage $message="tm-delete-tiddler" $param=<<att>>/>
-🗑
-</$button>
+<<fu-att-delete-button>>
 </div>
 <$let descState={{{ [<att>addprefix[$:/state/rimir/file-upload/att-desc/]] }}}>
 <%if [<descState>get[text]match[edit]] %>
@@ -45,6 +94,56 @@ type: text/vnd.tiddlywiki
 <$action-setfield $tiddler="$:/state/rimir/file-upload/media-modal" text=<<att>>/>
 \end
 
+\procedure fu-att-tile-img-body()
+<div class="fu-att-thumb">
+<$button class="tc-btn-invisible fu-att-thumb-nav" actions=<<fu-tile-click-actions>>>
+<img draggable="false" loading="lazy" src=<<imgSrc>>/>
+<%if [<showPlayBadge>match[yes]] %>
+<div class="fu-att-play-badge">&#9654;</div>
+<%endif%>
+</$button>
+</div>
+<<fu-att-actions>>
+<<fu-att-extra-actions>>
+\end
+
+\procedure fu-att-tile-img(imgSrc, showPlayBadge)
+<%if [<fu-draggable>match[yes]] %>
+<$draggable tiddler=<<att>> class=<<itemCls>>>
+<<fu-att-tile-img-body>>
+</$draggable>
+<%else%>
+<div class=<<itemCls>>>
+<<fu-att-tile-img-body>>
+</div>
+<%endif%>
+\end
+
+\procedure fu-att-tile-file-body()
+<$button class="tc-btn-invisible fu-att-file-link" actions=<<fu-tile-click-actions>>>
+📄 <$text text={{{ [function[fu-att-label],<att>] }}}/>
+</$button>
+<$button class="tc-btn-invisible fu-att-action-btn" tooltip="Copy file link">
+<$action-sendmessage $message="tm-copy-to-clipboard" $param={{{ [<att>get[_canonical_uri]] }}}/>
+📋
+</$button>
+<a class="tc-btn-invisible fu-att-action-btn fu-att-newtab-link" href={{{ [function[fu-att-newtab-href],<att>] }}} target="_blank" rel="noopener" title="Open in new tab">↗</a>
+<<fu-att-delete-button>>
+<<fu-att-extra-actions>>
+\end
+
+\procedure fu-att-tile-file()
+<%if [<fu-draggable>match[yes]] %>
+<$draggable tiddler=<<att>> class="fu-att-file-row">
+<<fu-att-tile-file-body>>
+</$draggable>
+<%else%>
+<div class="fu-att-file-row">
+<<fu-att-tile-file-body>>
+</div>
+<%endif%>
+\end
+
 \procedure fu-render-media-grid(itemFilter)
 <!-- Inline navigator: appify replaces the page-level navigator, so without
      this wrap `tm-delete-tiddler` dispatched from the tile delete button
@@ -58,61 +157,38 @@ type: text/vnd.tiddlywiki
 <div class="fu-att-grid">
 <!-- 1. Thumbnailed non-image, non-video (PDFs, .msg, docx with generated thumb) -->
 <$list filter="[subfilter<itemFilter>has[_thumbnail_uri]] :filter[get[type]!prefix[image/]!prefix[video/]]" variable="att">
-<div class="fu-att-item">
-<div class="fu-att-thumb">
-<$button class="tc-btn-invisible fu-att-thumb-nav" actions=<<fu-tile-click-actions>>>
-<img draggable="false" loading="lazy" src={{{ [<att>get[_thumbnail_uri]] }}}/>
-</$button>
-</div>
-<<fu-att-actions>>
-</div>
+<$let imgSrc={{{ [<att>get[_thumbnail_uri]] }}} itemCls="fu-att-item">
+<<fu-att-tile-img {{{ [<imgSrc>] }}}>>
+</$let>
 </$list>
 <!-- 2. Video thumbnails (with play badge) -->
 <$list filter="[subfilter<itemFilter>has[_thumbnail_uri]] :filter[get[type]prefix[video/]]" variable="att">
-<div class="fu-att-item">
-<div class="fu-att-thumb">
-<$button class="tc-btn-invisible fu-att-thumb-nav" actions=<<fu-tile-click-actions>>>
-<img draggable="false" loading="lazy" src={{{ [<att>get[_thumbnail_uri]] }}}/>
-<div class="fu-att-play-badge">&#9654;</div>
-</$button>
-</div>
-<<fu-att-actions>>
-</div>
-</$list>
-<!-- 3. Images (with or without thumb — fall back to canonical URI) -->
-<$list filter="[subfilter<itemFilter>] :filter[get[type]prefix[image/]]" variable="att">
-<div class="fu-att-item">
-<div class="fu-att-thumb">
-<$button class="tc-btn-invisible fu-att-thumb-nav" actions=<<fu-tile-click-actions>>>
-<$let thumbUri={{{ [<att>get[_thumbnail_uri]] }}} fullUri={{{ [<att>get[_canonical_uri]] }}}>
-<%if [<thumbUri>!is[blank]] %>
-<img draggable="false" loading="lazy" src=<<thumbUri>>/>
-<%else%>
-<img draggable="false" loading="lazy" src=<<fullUri>>/>
-<%endif%>
+<$let imgSrc={{{ [<att>get[_thumbnail_uri]] }}} itemCls="fu-att-item">
+<<fu-att-tile-img {{{ [<imgSrc>] }}} "yes">>
 </$let>
-</$button>
-</div>
-<<fu-att-actions>>
-</div>
+</$list>
+<!-- 3. Images (with or without thumb — fall back to canonical URI). EXIF-portrait
+     sizing always-on: detects rotated-90° EXIF orientations (5/6/7/8) and the
+     ratio of width:height, applies fu-att-item-portrait class when appropriate. -->
+<$list filter="[subfilter<itemFilter>] :filter[get[type]prefix[image/]]" variable="att">
+<$let
+  thumbUri={{{ [<att>get[_thumbnail_uri]] }}}
+  fullUri={{{ [<att>get[_canonical_uri]] }}}
+  imgSrc={{{ [<thumbUri>!is[blank]then<thumbUri>] ~[<fullUri>] }}}
+  exifW={{{ [<att>get[exif-width]] }}}
+  exifH={{{ [<att>get[exif-height]] }}}
+  exifO={{{ [<att>get[exif-orientation]] }}}
+  rotated={{{ [[5 6 7 8]split[ ]] :filter[<currentTiddler>match<exifO>] +[limit[1]] }}}
+  isPortrait={{{ [<rotated>!is[blank]] :filter[<exifW>compare:number:gt<exifH>] ~[<exifH>compare:number:gt<exifW>] }}}
+  itemCls={{{ [<isPortrait>!is[blank]then[fu-att-item fu-att-item-portrait]] ~[[fu-att-item]] }}}
+>
+<<fu-att-tile-img {{{ [<imgSrc>] }}}>>
+</$let>
 </$list>
 </div>
 <!-- 4. Plain file list (no thumbnail + not an image) -->
 <$list filter="[subfilter<itemFilter>!has[_thumbnail_uri]] :filter[get[type]!prefix[image/]]" variable="att">
-<div class="fu-att-file-row">
-<$button class="tc-btn-invisible fu-att-file-link" actions=<<fu-tile-click-actions>>>
-📄 <$text text={{{ [function[fu-att-label],<att>] }}}/>
-</$button>
-<$button class="tc-btn-invisible fu-att-action-btn" tooltip="Copy file link">
-<$action-sendmessage $message="tm-copy-to-clipboard" $param={{{ [<att>get[_canonical_uri]] }}}/>
-📋
-</$button>
-<a class="tc-btn-invisible fu-att-action-btn fu-att-newtab-link" href={{{ [function[fu-att-newtab-href],<att>] }}} target="_blank" rel="noopener" title="Open in new tab">↗</a>
-<$button class="tc-btn-invisible fu-att-action-btn fu-att-delete-btn" tooltip="Delete">
-<$action-sendmessage $message="tm-delete-tiddler" $param=<<att>>/>
-🗑
-</$button>
-</div>
+<<fu-att-tile-file>>
 </$list>
 </$navigator>
 \end

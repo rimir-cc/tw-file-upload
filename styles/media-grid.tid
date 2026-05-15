@@ -19,6 +19,12 @@ type: text/vnd.tiddlywiki
     display: flex;
     flex-direction: column;
 }
+/* Narrower cell + taller thumb for portrait-orientation photos. Image
+   section toggles this via the `fu-att-item-portrait` class based on
+   EXIF width/height/orientation. */
+.fu-att-item-portrait {
+    width: 120px;
+}
 .fu-att-thumb {
     position: relative;
     display: flex;
@@ -28,6 +34,9 @@ type: text/vnd.tiddlywiki
     overflow: hidden;
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.04);
+}
+.fu-att-item-portrait .fu-att-thumb {
+    height: 168px;
 }
 .fu-att-thumb-nav {
     width: 100%;

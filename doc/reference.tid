@@ -125,6 +125,23 @@ Each tile shows: name (or msg-subject from the `.email` sibling for `.msg` files
 
 The procedure wraps its body in an inline `<$navigator>` with dedicated state tiddlers (`$:/state/rimir/file-upload/media-grid/story` + `…/history`) so it's appify-safe by default — see `tw-appify-no-navigator` memory for why this matters.
 
+!!!! Opt-in extras (since 0.1.26)
+
+Set these as `<$let>` variables in the calling scope to switch on additional behaviour:
+
+|!Variable |!Values |!Effect |
+|`fu-draggable` |`yes` / unset |When `yes`, each tile wraps in `<$draggable tiddler=<<att>>>` instead of `<div>` so users can drag the tile out (e.g. onto a media-group widget) |
+|`fu-delete-mode` |`remove` / `none` / unset |`remove` switches the 🗑 button to `$action-listops $field="members" $subfilter="-[<att>]"` on `<<fu-delete-group>>` (membership removal — does not delete the underlying file); `none` hides the button entirely; unset (default) dispatches `tm-delete-tiddler` which file-upload's confirm-cascade modal catches |
+|`fu-delete-group` |tiddler title |Target tiddler for `fu-delete-mode="remove"` — the listops operation removes `<<att>>` from this tiddler's `members` field |
+
+!!!! Extension hook
+
+`\procedure fu-att-extra-actions()` ships as an empty no-op default. Consumers can redefine it in their own scope (in any wikitext loaded before the `<<fu-render-media-grid>>` call, including the same view-tiddler) and the override gets invoked below every tile's action row. Receives `<att>` in scope. priv-app uses this for media-group breadcrumb badges showing which group(s) a tile belongs to.
+
+!!!! EXIF-portrait sizing
+
+The image section reads `exif-width` / `exif-height` / `exif-orientation` on each tile and applies the `.fu-att-item-portrait` class (narrower cell, taller thumb) when the photo is taller than wide. Accounts for the four 90°-rotated EXIF orientation values (5/6/7/8) — a horizontal-sensor shot taken in portrait mode is still detected. Gracefully no-ops when the EXIF fields aren't set, so non-photo tiles render unchanged.
+
 !!! `$:/plugins/rimir/file-upload/templates/media-modal`
 
 Self-mounting overlay. Transclude once per view via `<$transclude $tiddler="$:/plugins/rimir/file-upload/templates/media-modal" $mode="block"/>`. It renders nothing when `$:/state/rimir/file-upload/media-modal` is blank; otherwise opens a modal with:
@@ -137,7 +154,7 @@ Also wraps its body in an inline `<$navigator>` so the modal's Delete button rea
 
 !!! Styles
 
-`$:/plugins/rimir/file-upload/styles/media-grid` ships all `.fu-att-*` (grid + tile) and `.fu-modal-*` (modal overlay + body + footer) classes. Consumers can override sizing via descendant selectors — for example orga-apps 0.2.66's `.oa-mt-attachments .fu-att-item { width: 90px; }` for the compact meeting sidebar.
+`$:/plugins/rimir/file-upload/styles/media-grid` ships all `.fu-att-*` (grid + tile + `.fu-att-item-portrait` for EXIF-portrait sizing) and `.fu-modal-*` (modal overlay + body + footer) classes. Consumers can override sizing via descendant selectors — for example orga-apps 0.2.66's `.oa-mt-attachments .fu-att-item { width: 90px; }` for the compact meeting sidebar.
 
 !! Config tiddlers
 
