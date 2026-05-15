@@ -27,18 +27,35 @@ describe("file-upload: media-grid filter functions", function () {
 		for(var i = 0; i < added.length; i++) $tw.wiki.deleteTiddler(added[i]);
 	});
 
+	// Build a real root widget once; `:map[...]` subfilter execution needs
+	// a widget that can spawn child fake widgets (via makeFakeWidgetWithVariables),
+	// which a plain `{getVariable: ...}` stub can't do.
+	var ROOT_WIDGET = $tw.wiki.makeWidget(
+		$tw.wiki.parseText("text/vnd.tiddlywiki", ""),
+		{}
+	);
+
 	function evalFn(filter, attTitle) {
-		// Evaluate `filter` (which uses <att>) with att=attTitle in scope.
-		return $tw.wiki.filterTiddlers(filter, {
-			getVariable: function(name) {
-				if(name === "att") return attTitle;
-				return undefined;
-			}
-		});
+		return $tw.wiki.filterTiddlers(
+			filter,
+			ROOT_WIDGET.makeFakeWidgetWithVariables({att: attTitle})
+		);
 	}
 
-	// fu-att-label: for an .msg tiddler whose .email sibling has msg-subject,
-	// return the subject; otherwise the filename's last path segment.
+	// These three filter expressions are LITERAL inlines of the functions
+	// defined in templates/media-grid.tid (`\function fu-att-email-artifact`,
+	// `\function fu-att-label`, `\function fu-att-newtab-href`). Wikitext
+	// `\function` definitions live inside the rendering scope of the
+	// declaring tiddler — they aren't reachable from filterTiddlers in JS
+	// tests — so we pin behaviour by re-stating the function body here.
+	// If the function bodies change, update these literals too.
+	var EMAIL_ARTIFACT = "[<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]] ~[<att>get[type]match[message/rfc822]then<att>addsuffix[.email]]";
+	var LABEL = EMAIL_ARTIFACT + " :map[get[msg-subject]] :filter[!is[blank]] ~[<att>get[title]split[/]last[]]";
+	var NEWTAB = EMAIL_ARTIFACT + " :map[encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]]";
+
+	// fu-att-label: for an .msg / .eml tiddler whose .email sibling has
+	// msg-subject, return the subject; otherwise the filename's last path
+	// segment.
 	describe("fu-att-label-shape", function () {
 
 		it("returns the .email's msg-subject for an .msg tiddler", function () {
@@ -49,35 +66,51 @@ describe("file-upload: media-grid filter functions", function () {
 				"msg-subject": "Project kickoff",
 				_artifact_source: msg
 			});
-			var out = evalFn(
-				"[<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]get[msg-subject]] ~[<att>get[title]split[/]last[]]",
-				msg
-			);
-			expect(out).toEqual(["Project kickoff"]);
+			expect(evalFn(LABEL, msg)).toEqual(["Project kickoff"]);
 		});
 
-		it("falls back to filename last segment when the .email sibling is missing", function () {
+		it("returns the .email's msg-subject for an .eml tiddler (message/rfc822)", function () {
+			var eml = "$:/test/fu/mailbox/foo.eml";
+			add(eml, {type: "message/rfc822"});
+			add(eml + ".email", {
+				type: "text/x-frontmattered-markdown",
+				"msg-subject": "Thunderbird drop",
+				_artifact_source: eml
+			});
+			expect(evalFn(LABEL, eml)).toEqual(["Thunderbird drop"]);
+		});
+
+		it("falls back to filename last segment when the .email sibling is missing (.msg)", function () {
 			var msg = "$:/test/fu/mailbox/lonely.msg";
 			add(msg, {type: "application/vnd.ms-outlook"});
-			var out = evalFn(
-				"[<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]get[msg-subject]] ~[<att>get[title]split[/]last[]]",
-				msg
-			);
-			expect(out).toEqual(["lonely.msg"]);
+			expect(evalFn(LABEL, msg)).toEqual(["lonely.msg"]);
 		});
 
-		it("returns the filename last segment for a non-.msg tiddler", function () {
+		it("falls back to filename last segment when the .email sibling is missing (.eml)", function () {
+			var eml = "$:/test/fu/mailbox/lonely.eml";
+			add(eml, {type: "message/rfc822"});
+			expect(evalFn(LABEL, eml)).toEqual(["lonely.eml"]);
+		});
+
+		it("falls back to filename when an .msg's .email has an empty msg-subject", function () {
+			var msg = "$:/test/fu/mailbox/blank.msg";
+			add(msg, {type: "application/vnd.ms-outlook"});
+			add(msg + ".email", {
+				type: "text/x-frontmattered-markdown",
+				"msg-subject": "",
+				_artifact_source: msg
+			});
+			expect(evalFn(LABEL, msg)).toEqual(["blank.msg"]);
+		});
+
+		it("returns the filename last segment for a non-email tiddler", function () {
 			var pdf = "$:/test/fu/files/invoice.pdf";
 			add(pdf, {type: "application/pdf"});
-			var out = evalFn(
-				"[<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]get[msg-subject]] ~[<att>get[title]split[/]last[]]",
-				pdf
-			);
-			expect(out).toEqual(["invoice.pdf"]);
+			expect(evalFn(LABEL, pdf)).toEqual(["invoice.pdf"]);
 		});
 	});
 
-	// fu-att-newtab-href: for .msg → #<encoded .email>, else _canonical_uri.
+	// fu-att-newtab-href: for .msg / .eml → #<encoded .email>, else _canonical_uri.
 	describe("fu-att-newtab-href-shape", function () {
 
 		it("returns the appify permalink (#<encoded .email>) for an .msg tiddler", function () {
@@ -86,10 +119,7 @@ describe("file-upload: media-grid filter functions", function () {
 				type: "application/vnd.ms-outlook",
 				_canonical_uri: "/files/email/m.msg"
 			});
-			var out = evalFn(
-				"[<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]]",
-				msg
-			);
+			var out = evalFn(NEWTAB, msg);
 			expect(out.length).toBe(1);
 			expect(out[0].charAt(0)).toBe("#");
 			// The .email title contains ':' which encodeuricomponent turns into '%3A'
@@ -97,17 +127,56 @@ describe("file-upload: media-grid filter functions", function () {
 			expect(out[0]).toContain("m.msg.email");
 		});
 
-		it("returns the _canonical_uri for a non-.msg tiddler", function () {
+		it("returns the appify permalink (#<encoded .email>) for an .eml tiddler (message/rfc822)", function () {
+			var eml = "$:/test/fu/m.eml";
+			add(eml, {
+				type: "message/rfc822",
+				_canonical_uri: "/files/email/m.eml"
+			});
+			var out = evalFn(NEWTAB, eml);
+			expect(out.length).toBe(1);
+			expect(out[0].charAt(0)).toBe("#");
+			expect(out[0]).toContain("%3A");
+			expect(out[0]).toContain("m.eml.email");
+		});
+
+		it("returns the _canonical_uri for a non-email tiddler", function () {
 			var pdf = "$:/test/fu/p.pdf";
 			add(pdf, {
 				type: "application/pdf",
 				_canonical_uri: "/files/pdf/p.pdf"
 			});
-			var out = evalFn(
-				"[<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]]",
-				pdf
-			);
-			expect(out).toEqual(["/files/pdf/p.pdf"]);
+			expect(evalFn(NEWTAB, pdf)).toEqual(["/files/pdf/p.pdf"]);
+		});
+	});
+
+	// fu-att-email-artifact: returns <att>.email for email-typed parents,
+	// empty otherwise. Drives both fu-att-label fallback chain and the
+	// media-modal's email body branch.
+	describe("fu-att-email-artifact", function () {
+
+		it("returns <att>.email for application/vnd.ms-outlook", function () {
+			var msg = "$:/test/fu/dispatch/x.msg";
+			add(msg, {type: "application/vnd.ms-outlook"});
+			expect(evalFn(EMAIL_ARTIFACT, msg)).toEqual([msg + ".email"]);
+		});
+
+		it("returns <att>.email for message/rfc822", function () {
+			var eml = "$:/test/fu/dispatch/x.eml";
+			add(eml, {type: "message/rfc822"});
+			expect(evalFn(EMAIL_ARTIFACT, eml)).toEqual([eml + ".email"]);
+		});
+
+		it("returns empty for application/pdf", function () {
+			var pdf = "$:/test/fu/dispatch/x.pdf";
+			add(pdf, {type: "application/pdf"});
+			expect(evalFn(EMAIL_ARTIFACT, pdf)).toEqual([]);
+		});
+
+		it("returns empty for an image type", function () {
+			var img = "$:/test/fu/dispatch/x.jpg";
+			add(img, {type: "image/jpeg"});
+			expect(evalFn(EMAIL_ARTIFACT, img)).toEqual([]);
 		});
 	});
 

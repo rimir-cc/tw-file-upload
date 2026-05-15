@@ -3,9 +3,11 @@ type: text/vnd.tiddlywiki
 
 \whitespace trim
 
-\function fu-att-label(att) [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]get[msg-subject]] ~[<att>get[title]split[/]last[]]
+\function fu-att-email-artifact(att) [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]] ~[<att>get[type]match[message/rfc822]then<att>addsuffix[.email]]
 
-\function fu-att-newtab-href(att) [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]]
+\function fu-att-label(att) [function[fu-att-email-artifact],<att>] :map[get[msg-subject]] :filter[!is[blank]] ~[<att>get[title]split[/]last[]]
+
+\function fu-att-newtab-href(att) [function[fu-att-email-artifact],<att>] :map[encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]]
 
 \procedure fu-att-actions()
 <div class="fu-att-info">

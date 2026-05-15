@@ -3,7 +3,7 @@ type: text/vnd.tiddlywiki
 
 \whitespace trim
 
-\import [[$:/plugins/rimir/file-upload/templates/video-player]]
+\import [[$:/plugins/rimir/file-upload/templates/video-player]] [[$:/plugins/rimir/file-upload/templates/media-grid]]
 
 \procedure fu-modal-close()
 <$action-setfield $tiddler="$:/state/rimir/file-upload/media-modal" text=""/>
@@ -34,10 +34,12 @@ type: text/vnd.tiddlywiki
 <img class="fu-modal-image" src={{{ [<att>get[_canonical_uri]] }}}/>
 <%elseif [<att>get[type]match[application/pdf]] %>
 <iframe class="fu-modal-pdf" src={{{ [<att>get[_canonical_uri]] }}} title={{{ [<att>get[title]split[/]last[]] }}}/>
-<%elseif [<att>get[type]match[application/vnd.ms-outlook]] %>
+<%elseif [function[fu-att-email-artifact],<att>] %>
 <!-- Render the converted .email artifact inline. body/email (from msg-import)
-     puts the attachment row at top and the markdown body underneath. -->
-<$let emailTitle={{{ [<att>addsuffix[.email]] }}}>
+     puts the attachment row at top and the markdown body underneath.
+     `fu-att-email-artifact` returns the <att>.email title for both
+     application/vnd.ms-outlook (.msg) and message/rfc822 (.eml) parents. -->
+<$let emailTitle={{{ [function[fu-att-email-artifact],<att>] }}}>
 <div class="fu-modal-email">
 <$tiddler tiddler=<<emailTitle>>>
 <$transclude $tiddler="$:/plugins/rimir/msg-import/body/email" $mode="block"/>
@@ -63,7 +65,7 @@ type: text/vnd.tiddlywiki
 <$action-sendmessage $message="tm-copy-to-clipboard" $param={{{ [<att>get[_canonical_uri]] }}}/>
 📋 Copy link
 </$button>
-<a class="tc-btn-invisible fu-modal-action-btn fu-att-newtab-link" href={{{ [<att>get[type]match[application/vnd.ms-outlook]then<att>addsuffix[.email]encodeuricomponent[]addprefix[#]] ~[<att>get[_canonical_uri]] }}} target="_blank" rel="noopener">↗ Open in new tab</a>
+<a class="tc-btn-invisible fu-modal-action-btn fu-att-newtab-link" href={{{ [function[fu-att-newtab-href],<att>] }}} target="_blank" rel="noopener">↗ Open in new tab</a>
 <$button class="tc-btn-invisible fu-modal-action-btn fu-modal-delete-btn" tooltip="Delete file">
 <$action-setfield $tiddler="$:/state/rimir/file-upload/media-modal" text=""/>
 <$action-sendmessage $message="tm-delete-tiddler" $param=<<att>>/>
