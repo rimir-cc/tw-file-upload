@@ -164,3 +164,14 @@ type: text/vnd.tiddlywiki
 .fu-back-btn {
   margin-top: 6px;
 }
+
+/* Delete-confirm modal: danger button (rendered in modal footer, outside the body's scoped <style>) */
+.rr-danger-btn {
+  background: #c0392b;
+  color: #fff;
+  border: 1px solid #a02616;
+  padding: 0.3em 0.9em;
+}
+.rr-danger-btn:hover {
+  background: #a02616;
+}

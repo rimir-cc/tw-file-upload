@@ -46,7 +46,7 @@ Since 0.1.21, attempting to delete a tiddler with `_canonical_uri` (i.e. any upl
 * A hint at the `_derived/<basename>/` directory tree that will be removed
 * Every tiddler that backlinks to anything in the cascade
 
-A danger-styled "Delete anyway" button re-dispatches `tm-delete-tiddler` after setting `$:/state/rimir/file-upload/delete-confirm/bypass` so the patched handler lets the navigator's default path run this time.
+Action buttons (`Cancel` / `Delete anyway`) live in the modal's `footer:` field — TW core's `modal.js` renders a default `Close` button there when the field is absent, so placing our buttons in the footer replaces that fallback (rather than duplicating it). The danger-styled `Delete anyway` calls `$action-deletetiddler` on the cascade target directly: `wiki.deleteTiddler` doesn't invoke the `th-deleting-tiddler` hook (only `NavigatorWidget` does), so Layer 1's legacy `confirm()` prompt is skipped while Layer 2's `change`-event listener still runs `cascadeDeleteArtifacts` + `deleteFileFromServer` as usual. No inline `<$navigator>` wraps the modal — appify is irrelevant here because the modal renders under `$tw.rootWidget`, and wrapping it would intercept `tm-close-tiddler` and break the Cancel button (see `tw-modal-inline-navigator-eats-close`).
 
 Disable via `$:/config/rimir/file-upload/confirm-deletes` (default `yes`).
 

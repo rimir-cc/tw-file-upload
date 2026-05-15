@@ -1,5 +1,6 @@
 title: $:/plugins/rimir/file-upload/templates/delete-confirm-modal
 subtitle: Delete uploaded file?
+footer: <$let target={{{ [{$:/state/rimir/file-upload/delete-confirm/cascade}jsonget[target]] }}}><$button message="tm-close-tiddler">Cancel</$button> <$button class="rr-danger-btn"><$action-deletetiddler $tiddler=<<target>>/><$action-deletetiddler $tiddler="$:/state/rimir/file-upload/delete-confirm/cascade"/><$action-sendmessage $message="tm-close-tiddler"/>Delete anyway</$button></$let>
 
 \function fu.state.tiddler() [[$:/state/rimir/file-upload/delete-confirm/cascade]]
 \function fu.state.json() [{$:/state/rimir/file-upload/delete-confirm/cascade}jsonget[]]
@@ -15,19 +16,7 @@ subtitle: Delete uploaded file?
 .rr-delete-confirm li { margin: 0.1em 0; word-break: break-all; }
 .rr-delete-confirm .rr-derived-hint { font-family: monospace; font-size: 0.85em; opacity: 0.8; }
 .rr-delete-confirm .rr-backlinks-warn { color: #b35900; }
-.rr-delete-confirm .rr-action-bar { margin-top: 0.8em; display: flex; gap: 0.5em; justify-content: flex-end; }
-.rr-delete-confirm button { padding: 0.3em 0.9em; }
-.rr-delete-confirm .rr-danger-btn { background: #c0392b; color: #fff; border: 1px solid #a02616; }
-.rr-delete-confirm .rr-danger-btn:hover { background: #a02616; }
 </style>
-
-<!-- Wrap in an inline navigator: the modal's "Delete anyway" button re-dispatches
-     `tm-delete-tiddler` (with the bypass flag set) which must reach a navigator
-     for the original delete handler to fire. tm-modal renders the modal's
-     widget tree directly under `$tw.rootWidget` — in appify there is no
-     navigator above it, so without this wrap the re-dispatch silently no-ops
-     (see tw-appify-no-navigator memory). -->
-<$navigator story="$:/state/rimir/file-upload/delete-confirm/story" history="$:/state/rimir/file-upload/delete-confirm/history">
 
 <div class="rr-delete-confirm">
 
@@ -69,19 +58,6 @@ These references will break if you proceed.
 </div>
 </$list>
 
-<div class="rr-action-bar">
-<$button message="tm-close-tiddler">Cancel</$button>
-<$button class="rr-danger-btn">
-<$action-setfield $tiddler="$:/state/rimir/file-upload/delete-confirm/bypass" text=<<target>>/>
-<$action-deletetiddler $filter="[[$:/state/rimir/file-upload/delete-confirm/cascade]]"/>
-<$action-sendmessage $message="tm-close-tiddler"/>
-<$action-sendmessage $message="tm-delete-tiddler" $param=<<target>>/>
-Delete anyway
-</$button>
-</div>
-
 </$let>
 
 </div>
-
-</$navigator>
