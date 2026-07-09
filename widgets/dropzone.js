@@ -53,17 +53,40 @@ FileDropZoneWidget.prototype.execute = function() {
 	this.targetPrefix = this.getAttribute("target-prefix");
 	this.location = this.getAttribute("location", "files");
 	this.pipeline = this.getAttribute("pipeline");
+	this.tabIndex = this.getAttribute("tabindex");
 	DropZoneWidget.prototype.execute.call(this);
+};
+
+/*
+Extend the core render to optionally make the dropzone focusable. A focusable
+dropzone can receive `paste` events directly (clipboard images work when the
+zone — or a descendant — holds focus), which lets consumers like the dashboard
+support "click the canvas, then Ctrl+V".
+*/
+FileDropZoneWidget.prototype.render = function(parent, nextSibling) {
+	DropZoneWidget.prototype.render.call(this, parent, nextSibling);
+	if(this.tabIndex !== undefined && this.tabIndex !== "" && this.domNode) {
+		this.domNode.setAttribute("tabindex", this.tabIndex);
+	}
 };
 
 FileDropZoneWidget.prototype.handleDropEvent = function(event) {
 	var self = this,
-		dataTransfer = event.dataTransfer;
+		dataTransfer = event.dataTransfer,
+		hasFiles = dataTransfer && dataTransfer.files && dataTransfer.files.length > 0 &&
+			!$tw.utils.dragEventContainsType(event, "text/vnd.tiddler");
 	self.leaveDrag(event);
-	self.resetState();
-	if(dataTransfer.files && !$tw.utils.dragEventContainsType(event, "text/vnd.tiddler")) {
-		self.processFiles(dataTransfer.files);
+	if(!hasFiles) {
+		// Not an external file drop (e.g. an internal tiddler drag, or a URL/text
+		// drop). Prevent the browser's default action (navigating to a dropped
+		// link) but do NOT stop propagation, so an outer <$droppable> can still
+		// handle the drop — e.g. the dashboard turning a dropped tiddler into a
+		// tile. When there is no outer handler this is a harmless no-op.
+		event.preventDefault();
+		return;
 	}
+	self.resetState();
+	self.processFiles(dataTransfer.files);
 	event.preventDefault();
 	event.stopPropagation();
 };
